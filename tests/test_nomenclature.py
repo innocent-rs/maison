@@ -22,7 +22,7 @@ class TestNomenclature(unittest.TestCase):
         ligne_traverses = next(
             ligne
             for ligne in self.bom.lignes
-            if ligne.article.reference == "MAD-120x250-L5756"
+            if ligne.article.reference == "MAD-120x240-L5756"
         )
         self.assertAlmostEqual(ligne_traverses.longueur_totale_mm, 17_268)
 
@@ -32,7 +32,7 @@ class TestNomenclature(unittest.TestCase):
 
         contenu = sortie.getvalue()
         self.assertIn("reference;categorie;designation", contenu)
-        self.assertIn("MAD-120x250-L5756", contenu)
+        self.assertIn("MAD-120x240-L5756", contenu)
         self.assertIn("SIMPSON-SAI500-120-2", contenu)
         self.assertIn("SIMPSON-CSA5.0X40", contenu)
 
@@ -40,12 +40,12 @@ class TestNomenclature(unittest.TestCase):
         plancher = PlancherAFrame(GeometrieAFrame(), inclure_solives_i=True)
         lignes = {ligne.article.reference: ligne for ligne in plancher.nomenclature().lignes}
 
-        self.assertEqual(lignes["SIMPSON-EWH219-91"].quantite, 44)
+        self.assertEqual(lignes["SIMPSON-EWH240-61"].quantite, 44)
         self.assertEqual(lignes["SIMPSON-CNA4.0X35"].quantite, 704)
         ligne_solives = next(
             ligne
             for reference, ligne in lignes.items()
-            if reference.startswith("SJI-90x220")
+            if reference.startswith("SJI-60x240")
         )
         self.assertEqual(ligne_solives.quantite, 22)
 
@@ -67,7 +67,7 @@ class TestNomenclature(unittest.TestCase):
         ligne_tasseaux = next(
             ligne
             for reference, ligne in lignes.items()
-            if reference.startswith("TAS-90x45-")
+            if reference.startswith("TAS-60x45-")
         )
         self.assertEqual(ligne_tasseaux.quantite, 4)
 
@@ -90,7 +90,7 @@ class TestNomenclature(unittest.TestCase):
         }
 
         self.assertEqual(
-            lignes["ISOL-STEICOFLEX036-120x575x1220"].quantite,
+            lignes["ISOL-STEICOFLEX036-145x575x1220"].quantite,
             24,
         )
         self.assertEqual(lignes["VIS-BOIS-OSB-4X35"].quantite, 384)

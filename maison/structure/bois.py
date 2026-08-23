@@ -9,15 +9,16 @@ pièce longitudinale est orientée ainsi :
 """
 
 from dataclasses import dataclass
+from math import cos, radians, sin, tan
 
-from build123d import Align, Box, Part, Pos
+from build123d import Align, Box, Face, Part, Pos, Vector, Wire, extrude
 
 from maison.nomenclature import ArticleBOM
 
 
 @dataclass(frozen=True, slots=True)
 class Madrier:
-    """Madrier rectangulaire paramétrique, de section 120 × 250 mm par défaut.
+    """Madrier rectangulaire paramétrique, de section 120 × 240 mm par défaut.
 
     L'origine se trouve au milieu de la largeur, sur la face de départ et sous
     la pièce. Cette convention simplifie le placement des éléments du plancher.
@@ -25,8 +26,8 @@ class Madrier:
 
     longueur: float
     largeur: float = 120.0
-    hauteur: float = 250.0
-    materiau: str = "Bois massif structurel (classe à définir)"
+    hauteur: float = 240.0
+    materiau: str = "Douglas contrecollé structurel GT24"
 
     def __post_init__(self) -> None:
         for nom, valeur in (
@@ -68,6 +69,160 @@ class Madrier:
             largeur_mm=self.largeur,
             hauteur_mm=self.hauteur,
             volume_mm3=self.longueur * self.largeur * self.hauteur,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Arbaletrier:
+    """Arbalétrier avec faîtage vertical et assise limitée au pied.
+
+    ``longueur_axe`` relie le centre de la coupe de pied au centre de la coupe
+    de faîtage. La pièce est construite suivant X, centrée suivant Y et Z ; la
+    charpente se charge ensuite de l'orienter dans le plan YZ.
+    """
+
+    longueur_axe: float
+    angle_degres: float = 60.0
+    largeur: float = 120.0
+    hauteur: float = 250.0
+    largeur_appui_pied: float = 120.0
+    jeu_relief_pied: float = 2.0
+    materiau: str = "Bois massif structurel (classe à définir)"
+
+    def __post_init__(self) -> None:
+        if min(
+            self.longueur_axe,
+            self.largeur,
+            self.hauteur,
+            self.largeur_appui_pied,
+            self.jeu_relief_pied,
+        ) <= 0:
+            raise ValueError("les dimensions de l'arbalétrier doivent être positives")
+        if not 0 < self.angle_degres < 90:
+            raise ValueError("l'angle de l'arbalétrier doit être compris entre 0 et 90°")
+        if self.longueur_courte <= 0:
+            raise ValueError("l'arbalétrier est trop court pour ses coupes")
+        if self.largeur_appui_pied >= self.longueur_coupe_horizontale_complete:
+            raise ValueError("l'appui de pied ne laisse aucune zone de relief")
+
+    @property
+    def angle_coupe_pied_axe(self) -> float:
+        return self.angle_degres
+
+    @property
+    def angle_coupe_faitage_axe(self) -> float:
+        return 90 - self.angle_degres
+
+    @property
+    def recul_pointe_pied(self) -> float:
+        """Dépassement axial du nu extérieur au-delà du centre du pied."""
+        return self.largeur_appui_pied / 2 * cos(radians(self.angle_degres))
+
+    @property
+    def longueur_coupe_horizontale_complete(self) -> float:
+        """Longueur qu'aurait la coupe horizontale sans limitation extérieure."""
+        return self.hauteur / sin(radians(self.angle_degres))
+
+    @property
+    def longueur_relief_interieur(self) -> float:
+        """Projection horizontale dégagée au-delà de la poutre d'appui."""
+        angle = radians(self.angle_degres)
+        fin_relief = (
+            self.hauteur / (2 * cos(angle)) + self.jeu_relief_pied
+        ) / tan(angle)
+        return fin_relief - self.largeur_appui_pied / 2
+
+    @property
+    def depassement_pointe_faitage(self) -> float:
+        """Dépassement axial de la pointe haute au-delà de l'axe du faîtage."""
+        return self.hauteur / 2 * tan(radians(self.angle_degres))
+
+    @property
+    def longueur_debit(self) -> float:
+        """Longueur minimale du brut, de pointe longue à pointe longue."""
+        return (
+            self.longueur_axe
+            + self.recul_pointe_pied
+            + self.depassement_pointe_faitage
+        )
+
+    @property
+    def longueur_courte(self) -> float:
+        """Longueur de l'arête opposée aux deux pointes longues."""
+        return (
+            self.longueur_axe
+            - self.hauteur / (2 * tan(radians(self.angle_degres)))
+            - self.depassement_pointe_faitage
+        )
+
+    def construire(self) -> Part:
+        demi_hauteur = self.hauteur / 2
+        angle = radians(self.angle_degres)
+        pente = tan(angle)
+        sinus = sin(angle)
+        cosinus = cos(angle)
+        demi_appui = self.largeur_appui_pied / 2
+
+        def depuis_horizontal(horizontal: float, vertical: float) -> Vector:
+            """Ramène un point du plan horizontal/vertical dans l'axe du bois."""
+            return Vector(
+                horizontal * cosinus + vertical * sinus,
+                0,
+                -horizontal * sinus + vertical * cosinus,
+            )
+
+        fin_relief = (
+            demi_hauteur / cosinus + self.jeu_relief_pied
+        ) / pente
+        pied_exterieur_haut_x = (
+            -demi_appui + demi_hauteur * sinus
+        ) / cosinus
+        points = (
+            depuis_horizontal(-demi_appui, 0),
+            depuis_horizontal(demi_appui, 0),
+            depuis_horizontal(demi_appui, self.jeu_relief_pied),
+            depuis_horizontal(fin_relief, self.jeu_relief_pied),
+            Vector(
+                self.longueur_axe - demi_hauteur * pente,
+                0,
+                -demi_hauteur,
+            ),
+            Vector(
+                self.longueur_axe + demi_hauteur * pente,
+                0,
+                demi_hauteur,
+            ),
+            Vector(pied_exterieur_haut_x, 0, demi_hauteur),
+        )
+        profil = Face(Wire.make_polygon((*points, points[0])))
+        return extrude(
+            profil,
+            amount=self.largeur / 2,
+            both=True,
+            dir=Vector(0, 1, 0),
+        )
+
+    @property
+    def designation(self) -> str:
+        return (
+            f"Arbalétrier {self.largeur:g} × {self.hauteur:g} mm"
+            f" — débit {self.longueur_debit:g} mm — pente {self.angle_degres:g}°"
+        )
+
+    def article_bom(self) -> ArticleBOM:
+        reference = (
+            f"ARB-{self.largeur:g}x{self.hauteur:g}"
+            f"-A{self.angle_degres:g}-LD{self.longueur_debit:g}"
+        ).replace(".", "_")
+        return ArticleBOM(
+            reference=reference,
+            designation=self.designation,
+            categorie="Bois / arbalétrier",
+            materiau=self.materiau,
+            longueur_mm=self.longueur_debit,
+            largeur_mm=self.largeur,
+            hauteur_mm=self.hauteur,
+            volume_mm3=self.construire().volume,
         )
 
 
@@ -117,18 +272,18 @@ class Tasseau:
 
 @dataclass(frozen=True, slots=True)
 class PoutreI:
-    """Poutre en I de type STEICOjoist SJ90/360.
+    """Poutre en I de type STEICOjoist SJ60/240.
 
-    La géométrie utilise deux membrures de 90 × 45 mm et une âme centrée de
+    La géométrie utilise deux membrures de 60 × 45 mm et une âme centrée de
     8 mm. Les dimensions restent paramétrables pour de futures variantes.
     """
 
     longueur: float
-    hauteur: float = 360.0
-    largeur_membrure: float = 90.0
+    hauteur: float = 240.0
+    largeur_membrure: float = 60.0
     hauteur_membrure: float = 45.0
     epaisseur_ame: float = 8.0
-    modele: str = "STEICOjoist SJ90/360"
+    modele: str | None = None
     materiau: str = "Membrures bois/LVL et âme en fibre de bois"
 
     def __post_init__(self) -> None:
@@ -175,7 +330,10 @@ class PoutreI:
 
     @property
     def designation(self) -> str:
-        return f"Poutre en I {self.modele} — L {self.longueur:g} mm"
+        modele = self.modele or (
+            f"STEICOjoist SJ{self.largeur_membrure:g}/{self.hauteur:g}"
+        )
+        return f"Poutre en I {modele} — L {self.longueur:g} mm"
 
     @property
     def volume_mm3(self) -> float:

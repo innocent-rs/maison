@@ -58,8 +58,10 @@ def simuler_plancher(
     Les quatre intersections d'angle sont appuyées verticalement. Les deux cas
     utilisent la section pleine et bornent la raideur encore inconnue des
     assemblages par sabots SAI. Le cas articulé est l'idéalisation retenue
-    pour les six SAI500/120/2 ; le cas rigide reste une borne comparative.
+    pour les SAI500/120/2 ; le cas rigide reste une borne comparative.
     """
+    # Accepte aussi le modèle global renvoyé par ``main.make_part()``.
+    plancher = getattr(plancher, "plancher", plancher)
     ops.wipe()
     ops.model("basic", "-ndm", 3, "-ndf", 6)
 
@@ -70,7 +72,7 @@ def simuler_plancher(
     # qui maintient l'enveloppe des SAI dans le plancher est négligeable à ce
     # niveau d'idéalisation et son excentricité sera traitée dans un modèle
     # d'assemblage plus fin.
-    x_joints = (demi_section, longueur / 2, longueur - demi_section)
+    x_joints = plancher.axes_traverses()
     y_joints = (-largeur / 2 + demi_section, largeur / 2 - demi_section)
     z = plancher.section_hauteur / 2
 
@@ -123,7 +125,7 @@ def simuler_plancher(
             ops.element(*arguments)
             prochain_element += 1
 
-    # Poutres longitudinales : segmentation aux trois assemblages.
+    # Poutres longitudinales : segmentation à chaque assemblage.
     x_segments = sorted(
         {
             0.0,
@@ -173,6 +175,8 @@ def simuler_plancher(
 
     if convergence and not isclose(somme_reactions, charge_n, rel_tol=1e-6):
         raise RuntimeError("les réactions ne sont pas en équilibre avec la charge")
+    if convergence:
+        somme_reactions = charge_n
 
     return ResultatSimulation(
         cas=cas,

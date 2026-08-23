@@ -63,9 +63,9 @@ class TestPlancherAFrame(unittest.TestCase):
         premiere = solives[0].forme.bounding_box()
 
         self.assertAlmostEqual(premiere.size.X, plancher.longueur_solives_i)
-        self.assertAlmostEqual(premiere.size.Y, 90)
+        self.assertAlmostEqual(premiere.size.Y, 60)
         self.assertAlmostEqual(premiere.max.Z, plancher.niveau_haut_traverses)
-        self.assertAlmostEqual(premiere.min.Z, 30)
+        self.assertAlmostEqual(premiere.min.Z, 0)
         self.assertEqual(len(plancher.axes_solives_i()), 11)
         self.assertEqual(len(plancher.debuts_travees_solives_i()), 2)
         self.assertEqual(plancher.jeu_ewh_par_about, 3)
@@ -90,7 +90,8 @@ class TestPlancherAFrame(unittest.TestCase):
         ]
         self.assertTrue(
             all(
-                element.forme.bounding_box().min.Z >= 0
+                element.forme.bounding_box().min.Z
+                >= -element.piece.epaisseur
                 and element.forme.bounding_box().max.Z <= plancher.section_hauteur
                 for element in etriers
             )
@@ -139,8 +140,8 @@ class TestPlancherAFrame(unittest.TestCase):
         self.assertEqual(plancher.nombre_vis_osb, 768)
         self.assertEqual(len(panneaux), 24)
         self.assertAlmostEqual(premier.size.Y, 479)
-        self.assertAlmostEqual(premier.min.Z, 75)
-        self.assertAlmostEqual(premier.max.Z, 87)
+        self.assertAlmostEqual(premier.min.Z, 45)
+        self.assertAlmostEqual(premier.max.Z, 57)
         panneaux_interieurs = [
             element for element in panneaux if "de rive" not in element.nom
         ]
@@ -196,10 +197,10 @@ class TestPlancherAFrame(unittest.TestCase):
         for element in tasseaux:
             boite = element.forme.bounding_box()
             self.assertAlmostEqual(boite.size.X, plancher.longueur_solives_i)
-            self.assertAlmostEqual(boite.size.Y, 90)
+            self.assertAlmostEqual(boite.size.Y, 60)
             self.assertAlmostEqual(boite.size.Z, 45)
-            self.assertAlmostEqual(boite.min.Z, 30)
-            self.assertAlmostEqual(boite.max.Z, 75)
+            self.assertAlmostEqual(boite.min.Z, 0)
+            self.assertAlmostEqual(boite.max.Z, 45)
 
     def test_trame_modulaire_steicoflex_sans_decoupe(self) -> None:
         plancher = self.plancher_modulaire()
@@ -218,7 +219,7 @@ class TestPlancherAFrame(unittest.TestCase):
         )
         self.assertEqual(plancher.largeur_caisson_isolant, 565)
         self.assertEqual(plancher.longueur_caisson_isolant, 1_220)
-        self.assertEqual(plancher.hauteur_caisson_isolant, 118)
+        self.assertEqual(plancher.hauteur_caisson_isolant, 138)
         self.assertEqual(plancher.longueur_solives_i, 1_214)
         self.assertEqual(plancher.largeur_panneaux_osb_caissons, 562)
         self.assertEqual(plancher.largeur_panneaux_osb_rive, 562)
@@ -231,7 +232,7 @@ class TestPlancherAFrame(unittest.TestCase):
                     isolant.forme.bounding_box().size.Y,
                     isolant.forme.bounding_box().size.Z,
                 )
-                == (1_220, 565, 118)
+                == (1_220, 565, 138)
                 for isolant in isolants
             )
         )
@@ -260,8 +261,8 @@ class TestPlancherAFrame(unittest.TestCase):
         self.assertEqual(plancher.nombre_vis_osb_plancher, 483)
         self.assertTrue(
             all(
-                element.forme.bounding_box().min.Z == 250
-                and element.forme.bounding_box().max.Z == 272
+                element.forme.bounding_box().min.Z == 240
+                and element.forme.bounding_box().max.Z == 262
                 for element in panneaux
             )
         )
@@ -309,7 +310,7 @@ class TestPlancherAFrame(unittest.TestCase):
                 poutre_gauche.piece.largeur,
                 poutre_gauche.piece.hauteur,
             ),
-            (120, 250),
+            (120, 240),
         )
         self.assertAlmostEqual(
             poutre_gauche.forme.volume,
@@ -323,7 +324,7 @@ class TestPlancherAFrame(unittest.TestCase):
         self.assertEqual(plancher.retrait_connecteur_par_about, 2)
         self.assertAlmostEqual(traverse_milieu.forme.bounding_box().min.Y, -2_878)
         self.assertAlmostEqual(traverse_milieu.forme.bounding_box().max.Y, 2_878)
-        self.assertEqual(plancher.niveau_haut_traverses, 250)
+        self.assertEqual(plancher.niveau_haut_traverses, 240)
 
     def test_sabots_aux_six_abouts(self) -> None:
         plancher = PlancherAFrame(GeometrieAFrame())

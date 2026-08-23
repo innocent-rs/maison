@@ -1,10 +1,12 @@
 import unittest
 
 from maison.structure import (
+    FerrurePiedAFrame,
+    KitTirantAFrame,
     PlanFixationEWH,
     PlanFixationSAI,
     PointeAncrageCNA4x35,
-    SabotEWH219_91,
+    SabotEWH,
     SabotSAI500_120_2,
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
@@ -36,8 +38,8 @@ class TestConnecteurs(unittest.TestCase):
         self.assertEqual(vis.article_bom().reference, "SIMPSON-CSA5.0X40")
         self.assertEqual(vis.article_bom().longueur_mm, 40)
 
-    def test_etrier_ewh219_91(self) -> None:
-        etrier = SabotEWH219_91()
+    def test_etrier_ewh240_61(self) -> None:
+        etrier = SabotEWH()
         forme = etrier.construire()
 
         self.assertGreater(forme.volume, 0)
@@ -49,15 +51,15 @@ class TestConnecteurs(unittest.TestCase):
             etrier.nombre_pointes(PlanFixationEWH.BRIDES_LATERALES),
             12,
         )
-        self.assertEqual(etrier.article_bom().reference, "SIMPSON-EWH219-91")
+        self.assertEqual(etrier.article_bom().reference, "SIMPSON-EWH240-61")
 
     def test_etrier_ewh_accepte_la_membrure_steico_de_90_mm(self) -> None:
-        etrier = SabotEWH219_91()
+        etrier = SabotEWH()
 
-        self.assertTrue(etrier.accepte_largeur_poutre(90))
-        self.assertFalse(etrier.accepte_largeur_poutre(87))
+        self.assertTrue(etrier.accepte_largeur_poutre(60))
+        self.assertFalse(etrier.accepte_largeur_poutre(57))
         with self.assertRaises(ValueError):
-            SabotEWH219_91(largeur_interieure=92)
+            SabotEWH(largeur_interieure=62)
 
     def test_pointe_cna4x35(self) -> None:
         pointe = PointeAncrageCNA4x35()
@@ -76,6 +78,33 @@ class TestConnecteurs(unittest.TestCase):
 
         self.assertEqual(vis.article_bom().reference, "VIS-PLANCHER-OSB-5X60")
         self.assertEqual(vis.article_bom().longueur_mm, 60)
+
+    def test_ferrure_pied_a_frame_provisoire(self) -> None:
+        ferrure = FerrurePiedAFrame()
+        forme = ferrure.construire()
+        boite = forme.bounding_box()
+
+        self.assertGreater(forme.volume, 0)
+        self.assertAlmostEqual(forme.volume, ferrure.volume_mm3)
+        self.assertAlmostEqual(boite.min.Y, 0)
+        self.assertAlmostEqual(boite.max.Y, 200)
+        self.assertEqual(
+            ferrure.article_bom().reference,
+            "FERRURE-PIED-AFRAME-PROV-120",
+        )
+
+    def test_tirant_a_frame_provisoire(self) -> None:
+        tirant = KitTirantAFrame(longueur=4_000, diametre=16)
+        forme = tirant.construire()
+        boite = forme.bounding_box()
+
+        self.assertGreater(forme.volume, 0)
+        self.assertAlmostEqual(boite.size.X, 4_000)
+        self.assertAlmostEqual(boite.size.Y, 16)
+        self.assertEqual(
+            tirant.article_bom().reference,
+            "KIT-TIRANT-AFRAME-M16-L4000",
+        )
 
 
 if __name__ == "__main__":

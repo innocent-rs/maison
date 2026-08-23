@@ -1,11 +1,14 @@
 """Composants structurels réutilisables."""
 
-from .bois import Madrier, PoutreI, Tasseau
+from .bois import Arbaletrier, Madrier, PoutreI, Tasseau
+from .charpente import CharpenteAFrame, ElementCharpente
 from .connecteurs import (
+    FerrurePiedAFrame,
+    KitTirantAFrame,
     PlanFixationEWH,
     PlanFixationSAI,
     PointeAncrageCNA4x35,
-    SabotEWH219_91,
+    SabotEWH,
     SabotSAI500_120_2,
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
@@ -16,7 +19,12 @@ from .panneaux import DalleOSB, PanneauFondCaissonOSB, PanneauPlancherOSB
 from .plancher import ElementPlancher, PlancherAFrame
 
 __all__ = [
+    "Arbaletrier",
+    "CharpenteAFrame",
     "DalleOSB",
+    "ElementCharpente",
+    "FerrurePiedAFrame",
+    "KitTirantAFrame",
     "ElementPlancher",
     "Madrier",
     "PlanFixationEWH",
@@ -27,7 +35,7 @@ __all__ = [
     "PanneauFondCaissonOSB",
     "PanneauPlancherOSB",
     "PanneauSTEICOflex036",
-    "SabotEWH219_91",
+    "SabotEWH",
     "SabotSAI500_120_2",
     "Tasseau",
     "VisBoisOSB4x35",

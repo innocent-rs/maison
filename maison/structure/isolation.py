@@ -16,6 +16,7 @@ class PanneauSTEICOflex036:
     longueur: float = 1_220.0
     epaisseur_pose: float = 118.0
     largeur_pose: float = 565.0
+    longueur_pose: float | None = None
     conductivite_thermique: float = 0.036
     materiau: str = "Fibre de bois semi-rigide STEICOflex 036"
 
@@ -33,6 +34,15 @@ class PanneauSTEICOflex036:
             raise ValueError("l'épaisseur posée dépasse l'épaisseur nominale")
         if self.largeur_pose > self.largeur:
             raise ValueError("la largeur posée dépasse la largeur nominale")
+        if self.longueur_pose is not None:
+            if self.longueur_pose <= 0:
+                raise ValueError("la longueur posée doit être positive")
+            if self.longueur_pose > self.longueur:
+                raise ValueError("la longueur posée dépasse la longueur nominale")
+
+    @property
+    def longueur_modelee(self) -> float:
+        return self.longueur if self.longueur_pose is None else self.longueur_pose
 
     @property
     def resistance_thermique_nominale(self) -> float:
@@ -40,7 +50,7 @@ class PanneauSTEICOflex036:
 
     def construire(self) -> Part:
         return Box(
-            self.longueur,
+            self.longueur_modelee,
             self.largeur_pose,
             self.epaisseur_pose,
             align=(Align.MIN, Align.CENTER, Align.MIN),

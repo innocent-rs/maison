@@ -64,6 +64,14 @@ test:
 bom:
     python bom.py
 
+# Chiffre un lot : tous, plancher, charpente, a-frame ou total
+chiffrage lot="tous":
+    python chiffrer.py --lot {{lot}}
+
+# Optimise les coupes dans les barres commerciales et exporte le plan de débit
+optimiser lot="plancher":
+    python optimiser.py --lot {{lot}}
+
 # Compare les premiers cas de charge du châssis primaire
 simulate:
     python simulate.py

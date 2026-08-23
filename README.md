@@ -72,11 +72,103 @@ Le résultat est écrit dans `build/bom.csv` avec un séparateur `;`, adapté au
 tableurs en environnement français. Chaque nouvelle famille de pièces doit
 implémenter `article_bom()` ; elle est ensuite agrégée sans modifier l'exporteur.
 
+### Chiffrage par lot
+
+Les tarifs TTC sont maintenus directement en Python dans
+`maison/prix.py`. Un tarif représente toujours une unité réellement achetée :
+une barre complète, une pièce ou une boîte. Il n'existe pas de facturation de
+la seule longueur utile.
+
+Pour regrouper plusieurs coupes dans un même produit commercial, les références
+BOM concernées partagent une instance de `Tarif.en_barres` :
+
+```python
+TARIF_DOUGLAS = Tarif.en_barres(
+    "693.23",                     # prix TTC de la barre entière
+    reference_achat="DOUGLAS-GT24-120x240-L13500",
+    designation_achat="Douglas contrecollé 120 × 240 — L 13 500 mm",
+    longueur_commerciale_mm=13_500,
+    trait_scie_mm=5,
+)
+
+TARIFS = {
+    "MAD-120x240-L3756": TARIF_DOUGLAS,
+    "MAD-120x240-L4800": TARIF_DOUGLAS,
+}
+```
+
+L'optimiseur minimise exactement le nombre de barres, inclut le trait de scie
+entre les pièces et multiplie le prix de la barre par la quantité entière à
+commander. Le prix linéaire éventuellement affiché par le vendeur doit donc
+être converti en prix de barre dans la base locale.
+
+Pour un article vendu à la pièce :
+
+```python
+"SIMPSON-EWH240-61": Tarif.par_conditionnement(
+    "12.90",
+    quantite=1,
+    conditionnement="pièce",
+    fournisseur="Fournisseur à renseigner",
+    date_tarif="2026-08-23",
+    url="https://...",
+)
+```
+
+Enfin, pour une boîte de vis :
+
+```python
+"SIMPSON-CSA5.0X40": Tarif.par_conditionnement(
+    "89.90",                         # prix TTC de la boîte complète
+    quantite=250,
+    conditionnement="boîte de 250",
+    fournisseur="Fournisseur à renseigner",
+)
+```
+
+Avec `300` CSA dans des boîtes de `250`, le calcul achète deux boîtes. L'arrondi
+se fait toujours au conditionnement supérieur.
+
+Générer les trois chiffrages :
+
+```console
+just chiffrage
+```
+
+Ou un seul sous-ensemble :
+
+```console
+just chiffrage plancher
+just chiffrage charpente
+just chiffrage total
+```
+
+`a-frame` est accepté comme alias de `charpente`. Les fichiers sont écrits dans
+`build/chiffrage_<lot>.csv`. Une ligne sans prix conserve un coût vide et le
+résultat porte le statut `INCOMPLET` ; le sous-total affiché ne comprend que les
+lignes renseignées. Pour faire échouer une automatisation en présence d'un prix
+manquant, lancer `python chiffrer.py --lot total --strict`.
+
+Afficher et exporter séparément le plan de débit :
+
+```console
+just optimiser plancher
+```
+
+Le détail d'une barre par ligne est écrit dans `build/debit_<lot>.csv`, avec les
+coupes, les traits de scie, la chute restante et le rendement matière.
+
+La BOM principale reste une nomenclature de fabrication et contient donc les
+découpes. Le chiffrage regroupe les références débitées qui partagent un même
+produit commercial. Les madriers et les poutres en I sont ainsi optimisés
+séparément dans leurs barres respectives.
+
 ## Modèle structurel
 
 Les dimensions du modèle sont exprimées en millimètres. Les pièces de bois
 réutilisables se trouvent dans `maison/structure/bois.py`. Le premier composant
-est un `Madrier` de section `120 × 250 mm` et de longueur paramétrable :
+est un `Madrier` en Douglas contrecollé de section `120 × 240 mm` et de longueur
+paramétrable :
 
 ```python
 from maison.structure import Madrier
@@ -103,96 +195,95 @@ Chaque épaisseur possède une référence BOM distincte, par exemple
 
 ### Base actuelle du A-frame
 
-Le modèle de départ utilise :
+Le prototype technique utilise une emprise hors-tout de `4 000 × 4 800 mm`,
+soit `19,20 m²`, et conserve une pente de `60°`. La zone théorique au-dessus de
+`1 800 mm` représente environ `9,22 m²`. Ces valeurs restent des paramètres de
+CAO et non une qualification réglementaire de la surface.
 
-- une largeur hors-tout de plancher de `7 108 mm` ;
-- un angle de toiture de `60°` ;
-- une emprise totale de plancher plafonnée à `20,0 m²`, poutres comprises ;
-- une longueur modulaire imposée de `2 804 mm` ;
-- une emprise réelle de `19,93 m²` ;
-- une surface théorique d'environ `14,10 m²` au-dessus de `1 800 mm` ;
-- une hauteur théorique au faîtage d'environ `6 156 mm` ;
-- cinq madriers de section provisoire identique `120 × 250 mm` ;
-- deux poutres longitudinales et trois traverses coplanaires ;
-- trois traverses de `6 864 mm`, soit les `6 868 mm` entre faces moins les
-  deux ailes de sabot de `2 mm` interposées aux abouts ;
-- aucune entaille dans les cinq madriers ;
-- six sabots Simpson Strong-Tie `SAI500/120/2` à ailes intérieures, un à
-  chaque about de traverse ;
-- un plan de fixation total de `50` vis de connecteur `CSA5.0X40` par sabot,
-  soit `300` vis dans la nomenclature ;
-- aucune vis SWWZ traversante dans l'interface, afin de ne pas percer ou
-  contourner arbitrairement les tôles des sabots.
+La configuration active contient les cinq poutres porteuses : deux
+longitudinales de `4 800 mm` et trois traverses de `3 756 mm`, toutes en section
+`120 × 240 mm`, en Douglas contrecollé GT24. Les axes des traverses sont `62`,
+`2 400` et `4 738 mm`. Les `4 mm` retranchés aux traverses correspondent aux
+deux tôles de `2 mm` interposées à leurs abouts.
 
-La cible Carrez initiale de `20,5 m²` est conservée comme paramètre, mais le
-plafond de `20,0 m²` et la trame sans découpe de l'isolant sont prioritaires.
-Les dimensions `7 108 × 2 804 mm` découlent des modules de
-`575 × 1 220 mm` et laissent une marge d'environ `0,07 m²`. Les sections
-indiquées sont des hypothèses de conception et devront faire l'objet d'un calcul
-structurel avant construction.
-Ce châssis de cinq poutres n'est pas un plancher fini : les solives secondaires
-en I sont des `STEICOjoist SJ90/220` modélisées avec des membrures de
-`90 × 45 mm` et une âme de `8 mm`. Elles sont orientées longitudinalement et
-relient successivement les traverses haute–milieu puis milieu–basse. Onze lignes
-de solivage sont réparties sur la largeur avec un entraxe de `573 mm`. Chaque
-ligne comporte deux segments : le modèle compte donc vingt-deux STEICOjoist de
-`1 214 mm`. Leur face supérieure affleure celle
-des cinq madriers primaires. Avec une hauteur de `220 mm`, leur dessous reste
-`30 mm` au-dessus de celui des madriers de `250 mm`.
+Chaque traverse est suspendue par deux sabots Simpson SAI500/120/2, soit six
+sabots. Le plan de fixation total utilise `32` CSA5.0X40 côté porteur et `18`
+côté poutre portée par sabot : `300` vis, achetées dans deux boîtes de `250`.
+Six lignes de STEICOjoist SJ60/240 relient les trois traverses : douze segments
+de `2 212 mm`, espacés de `538,286 mm`. Chaque segment reçoit deux EWH240/61,
+soit vingt-quatre étriers et `384` pointes CNA4.0X35. Leur débit nécessite trois
+poutres commerciales entières de `13 m`.
 
-Un jeu de pose de `3 mm` est conservé entre chaque about de solive et la face
-de la traverse. Les poutres en I ne pénètrent donc pas dans les madriers ; les
-joues de l'étrier recouvrent volontairement les premiers `80 mm` de la solive.
+La BOM active contient sept références : les cinq poutres primaires, douze
+segments de poutre en I, six SAI, `300` CSA, vingt-quatre EWH et `384` CNA. Les
+panneaux, l'isolant et les éléments de charpente restent désactivés.
 
-Chaque segment de STEICOjoist est suspendu par deux étriers Simpson Strong-Tie
-`EWH219/91`, soit quarante-quatre étriers. Le montage modélisé utilise les brides
-supérieures et le plan standard Simpson : huit pointes en face du porteur,
-quatre sur son dessus et quatre dans la poutre portée. La BOM contient donc
-`704` pointes annelées `CNA4.0X35`. Les solives et leurs étriers sont activés
-dans le modèle courant avec `inclure_solives_i=True`.
+### Configuration complète conservée mais désactivée
 
-Les vingt caissons intérieurs, entre deux lignes de STEICOjoist, sont fermés par
-des découpes d'OSB 3 de `12 mm` posées par-dessus les membrures basses. Chaque
-fond mesure `562 × 1214 mm`, conserve un jeu total de `3 mm` entre les
-deux âmes et reçoit quatre encoches de `82 × 47 mm` autour des EWH. Il est vissé
-vers le bas dans les deux membrures par deux rangées de huit vis `4 × 35 mm`.
-Les quatre panneaux de rive ont les mêmes dimensions `562 × 1214 mm`. Ils
-restent rectangulaires, sans découpe dans les angles,
-puisque les sabots ne gênent pas leur pose. Le plancher compte ainsi
-vingt-quatre panneaux et `384` vis `4 × 35 mm` dans sa configuration actuelle.
-Deux découpes tiennent dans une dalle brute de `675 × 2500 mm` ; il faut donc
-douze dalles pour cette zone. Quatre tasseaux de rive
-`90 × 45 × 1214 mm` — la même section que les membrures des poutres en I —
-sont fixés contre les faces intérieures des poutres longitudinales. Leur dessus
-est aligné à `75 mm` avec celui des membrures basses afin de porter les fonds
-des quatre caissons de rive.
+Les composants suivants restent paramétriques et testés dans le dépôt, mais ne
+sont plus instanciés par `main.make_part()` et ne participent pas au chiffrage.
 
-Chaque caisson reçoit un panneau entier de STEICOflex 036 nominalement
-`120 × 575 × 1220 mm`. Le panneau flexible est représenté posé à
-`118 × 565 × 1220 mm` : `10 mm` de compression latérale et `2 mm` en hauteur,
-sans découpe. Les vingt-quatre panneaux figurent dans la BOM. Les petits
-recouvrements avec les tôles de `0,9 mm` des EWH représentent la déformation
-locale de l'isolant souple autour des étriers, pas une découpe.
+Les sept caissons de chaque travée donnent vingt-huit fonds d'OSB 3 de `12 mm`,
+mesurant `527,286 × 1043 mm` avec un jeu latéral total de `3 mm`. Vingt panneaux
+intérieurs sont encochés autour des EWH et huit panneaux de rive restent
+rectangulaires. Huit tasseaux de rive `60 × 45 × 1043 mm` complètent leurs
+appuis. La fixation utilise `392` vis `4 × 35 mm`.
 
-Le plancher porteur supérieur est fermé par de l'OSB 3 rainuré-languetté de
-`22 mm`. Son grand axe est perpendiculaire aux poutres en I et les joints courts
-sont alternés selon deux motifs ; ils tombent tous sur une membrure ou sur une
-poutre longitudinale. Le calepinage comprend quatre bandes entières de `675 mm`
-et une bande de rive de `104 mm`, soit vingt-deux découpes issues de dix-sept
-dalles brutes `675 × 2500 mm`. Le niveau fini provisoire du panneau est
-`Z = 272 mm`.
+L'isolation emploie vingt-huit panneaux bruts STEICOflex 036
+`145 × 575 × 1220 mm`, recoupés à environ `138 × 530,286 × 1049 mm` pour la
+pose. La compression verticale de principe est donc de `7 mm`. Le changement
+d'emprise abandonne volontairement l'ancien objectif de panneaux isolants sans
+découpe.
 
-La fixation supérieure utilise `483` vis à filetage complet `5 × 60 mm` :
-entraxe maximal `150 mm` aux rives des panneaux et `300 mm` sur les appuis
-intermédiaires. Le plan de fixation couvre les deux poutres longitudinales, les
-onze lignes de poutres en I et les trois traverses primaires. Les joints R+L
-devront également être collés selon les prescriptions du fabricant du panneau.
-La longueur de `60 mm` respecte la recommandation minimale de `2,5` fois
-l'épaisseur du panneau pour un OSB de plancher de `22 mm`.
+Le plancher supérieur reste en OSB 3 rainuré-languetté de `22 mm`, au niveau
+fini `Z = 272 mm`. Son calepinage comporte sept bandes de `675 mm` et une bande
+de rive de `75 mm`, avec des joints courts alternés sur les deux poutres en I
+centrales. Il comprend seize découpes, budgétées dans quinze dalles brutes
+`675 × 2500 mm`, et `422` vis `5 × 60 mm`. Vingt réservations
+`120 × 120 mm`, deux par ferme, dégagent maintenant les poutres de rive afin
+que les pieds d'arbalétrier portent directement sur le bois et non sur l'OSB.
 
-La géométrie CAO des sabots représente leur enveloppe utile — assise, joues et
-ailes intérieures — sans reproduire leurs trous. Pour l'exécution, le placement
-des fixations doit impérativement suivre le plan certifié Simpson de la
-référence `SAI500/120/2`. Le plan partiel reste paramétrable avec
-`plan_fixation_sai=PlanFixationSAI.PARTIEL`, mais le modèle courant retient le
-plan total.
+La géométrie CAO des connecteurs représente leur enveloppe utile sans détailler
+les trous. Les fixations d'exécution devront suivre les plans certifiés des
+fabricants. Les sections, les assemblages et la zone de batteries devront être
+validés à partir des masses réelles et des cas de charge du local technique.
+
+### Fermes en A — désactivées
+
+La charpente comprend dix couples d'arbalétriers espacés de `500 mm` suivant la
+longueur. Leurs axes vont de `150` à `4650 mm`, avec un retrait symétrique de
+`150 mm` aux deux extrémités.
+
+Les vingt arbalétriers provisoires ont une section de `120 × 250 mm`, une
+longueur d'axe de `3880 mm` et une longueur minimale de débit d'environ
+`4127 mm`. Le centre de la coupe de faîtage atteint `Z ≈ 3610 mm` et sa pointe
+haute `Z ≈ 3860 mm`.
+
+La coupe de pied comporte une face verticale au nu extérieur du plancher, une
+assise horizontale de `120 mm` alignée au-dessus de la poutre de rive et un
+relief intérieur de `2 mm`. Les triangles restent ainsi dans l'enveloppe
+`Y = ±2000 mm`. Les réservations du plancher établissent le contact bois-bois
+direct avec les poutres de rive, au niveau d'appui `Z = 250 mm`.
+
+L'assise forme `60°` avec l'axe du bois, soit un écart de `30°` par rapport à
+une coupe d'équerre. La coupe de faîtage est verticale et forme `30°` avec
+l'axe, soit `60°` par rapport à l'équerre. Les deux faces supérieures portent
+ainsi l'une contre l'autre ; les futures plaques d'acier assureront notamment
+leur maintien latéral. L'assemblage de pied reste à valider sous poussée
+horizontale et soulèvement.
+
+Chaque ferme peut recevoir deux ferrures de pied à deux joues
+et un tirant transversal sous plancher. La BOM contient donc vingt ferrures de
+principe et dix kits de tirant provisoires `M16 × 4000 mm`. Les ferrures
+représentent uniquement une enveloppe inspirée du principe PCAB ; leurs
+épaisseurs, perçages, ancrages, fixations et résistances ne constituent pas un
+plan d'exécution et devront être déterminés après le calcul des efforts de pied.
+Leurs retours descendent sous les poutres de rive jusqu'à l'axe `Z = -30 mm`
+du tirant, avec `20 mm` de matière de principe sous le perçage.
+
+Le futur OSB posé sur les versants formera le contreventement dans la longueur
+et stabilisera les fermes entre elles, à condition de définir le calepinage, les
+jonctions de panneaux et le plan de clouage. Il ne remplace pas les tirants :
+ceux-ci ferment chaque triangle et reprennent la poussée qui tend à écarter les
+deux pieds. Les plaques de faîtage et ce diaphragme de toiture seront ajoutés
+dans une étape suivante.
