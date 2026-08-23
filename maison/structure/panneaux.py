@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from build123d import Align, Box, Part
+from build123d import Align, Box, Part, Pos
 
 from maison.nomenclature import ArticleBOM
 
@@ -60,4 +60,87 @@ class DalleOSB:
             largeur_mm=self.largeur,
             hauteur_mm=self.epaisseur,
             volume_mm3=self.longueur * self.largeur * self.epaisseur,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PanneauFondCaissonOSB:
+    """Découpe d'OSB formant le fond d'un caisson entre deux solives en I.
+
+    Les angles peuvent être dégagés pour ne pas croiser les assises des étriers
+    EWH. Le panneau est posé par-dessus les membrures basses. La longueur suit
+    X, la largeur Y et l'origine est sous la face de départ, au milieu de la
+    largeur.
+    """
+
+    epaisseur: float
+    largeur: float
+    longueur: float
+    longueur_encoche: float = 82.0
+    largeur_encoche: float = 47.0
+    avec_encoches: bool = True
+    materiau: str = "Panneau structurel OSB 3"
+
+    def __post_init__(self) -> None:
+        if self.epaisseur not in DalleOSB.EPAISSEURS_DISPONIBLES:
+            raise ValueError("épaisseur OSB indisponible")
+        if min(
+            self.largeur,
+            self.longueur,
+            self.longueur_encoche,
+            self.largeur_encoche,
+        ) <= 0:
+            raise ValueError("les dimensions du panneau doivent être positives")
+        if 2 * self.longueur_encoche >= self.longueur:
+            raise ValueError("les encoches se rejoindraient dans la longueur")
+        if 2 * self.largeur_encoche >= self.largeur:
+            raise ValueError("les encoches se rejoindraient dans la largeur")
+
+    def construire(self) -> Part:
+        panneau = Box(
+            self.longueur,
+            self.largeur,
+            self.epaisseur,
+            align=(Align.MIN, Align.CENTER, Align.MIN),
+        )
+        if not self.avec_encoches:
+            return panneau
+        demi_largeur = self.largeur / 2
+        encoche = Box(
+            self.longueur_encoche,
+            self.largeur_encoche,
+            self.epaisseur,
+            align=(Align.MIN, Align.MIN, Align.MIN),
+        )
+        for x in (0, self.longueur - self.longueur_encoche):
+            for y in (-demi_largeur, demi_largeur - self.largeur_encoche):
+                panneau -= Pos(x, y, 0) * encoche
+        return panneau
+
+    @property
+    def volume_mm3(self) -> float:
+        surface = self.longueur * self.largeur
+        if self.avec_encoches:
+            surface -= 4 * self.longueur_encoche * self.largeur_encoche
+        return surface * self.epaisseur
+
+    def article_bom(self) -> ArticleBOM:
+        reference = (
+            f"OSB-FOND-{self.largeur:g}x{self.longueur:g}x{self.epaisseur:g}"
+        ).replace(".", "_")
+        if not self.avec_encoches:
+            reference += "-RECT"
+        suffixe = "" if self.avec_encoches else " — sans encoche"
+        return ArticleBOM(
+            reference=reference,
+            designation=(
+                f"Fond de caisson OSB {self.largeur:g} × {self.longueur:g}"
+                f" × {self.epaisseur:g} mm{suffixe}"
+            ),
+            categorie="Panneaux / découpe OSB",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.largeur,
+            hauteur_mm=self.epaisseur,
+            volume_mm3=self.volume_mm3,
         )

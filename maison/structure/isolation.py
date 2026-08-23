@@ -1,0 +1,66 @@
+"""Isolants paramétriques de la structure."""
+
+from dataclasses import dataclass
+
+from build123d import Align, Box, Part
+
+from maison.nomenclature import ArticleBOM
+
+
+@dataclass(frozen=True, slots=True)
+class PanneauSTEICOflex036:
+    """Panneau flexible acheté entier et représenté comprimé dans son caisson."""
+
+    epaisseur: float = 120.0
+    largeur: float = 575.0
+    longueur: float = 1_220.0
+    epaisseur_pose: float = 118.0
+    largeur_pose: float = 565.0
+    conductivite_thermique: float = 0.036
+    materiau: str = "Fibre de bois semi-rigide STEICOflex 036"
+
+    def __post_init__(self) -> None:
+        dimensions = (
+            self.epaisseur,
+            self.largeur,
+            self.longueur,
+            self.epaisseur_pose,
+            self.largeur_pose,
+        )
+        if min(dimensions) <= 0:
+            raise ValueError("les dimensions de l'isolant doivent être positives")
+        if self.epaisseur_pose > self.epaisseur:
+            raise ValueError("l'épaisseur posée dépasse l'épaisseur nominale")
+        if self.largeur_pose > self.largeur:
+            raise ValueError("la largeur posée dépasse la largeur nominale")
+
+    @property
+    def resistance_thermique_nominale(self) -> float:
+        return self.epaisseur / 1_000 / self.conductivite_thermique
+
+    def construire(self) -> Part:
+        return Box(
+            self.longueur,
+            self.largeur_pose,
+            self.epaisseur_pose,
+            align=(Align.MIN, Align.CENTER, Align.MIN),
+        )
+
+    def article_bom(self) -> ArticleBOM:
+        reference = (
+            f"ISOL-STEICOFLEX036-{self.epaisseur:g}x"
+            f"{self.largeur:g}x{self.longueur:g}"
+        ).replace(".", "_")
+        return ArticleBOM(
+            reference=reference,
+            designation=(
+                f"Panneau STEICOflex 036 {self.epaisseur:g} × "
+                f"{self.largeur:g} × {self.longueur:g} mm"
+            ),
+            categorie="Isolation / fibre de bois",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.largeur,
+            hauteur_mm=self.epaisseur,
+            volume_mm3=self.longueur * self.largeur * self.epaisseur,
+        )

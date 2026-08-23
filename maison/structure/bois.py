@@ -72,6 +72,50 @@ class Madrier:
 
 
 @dataclass(frozen=True, slots=True)
+class Tasseau:
+    """Tasseau rectangulaire, orienté selon la convention générale XYZ."""
+
+    longueur: float
+    largeur: float = 90.0
+    hauteur: float = 45.0
+    materiau: str = "Bois massif structurel (classe à définir)"
+
+    def __post_init__(self) -> None:
+        if min(self.longueur, self.largeur, self.hauteur) <= 0:
+            raise ValueError("les dimensions du tasseau doivent être positives")
+
+    def construire(self) -> Part:
+        return Box(
+            self.longueur,
+            self.largeur,
+            self.hauteur,
+            align=(Align.MIN, Align.CENTER, Align.MIN),
+        )
+
+    @property
+    def designation(self) -> str:
+        return (
+            f"Tasseau {self.largeur:g} × {self.hauteur:g} mm"
+            f" — L {self.longueur:g} mm"
+        )
+
+    def article_bom(self) -> ArticleBOM:
+        reference = (
+            f"TAS-{self.largeur:g}x{self.hauteur:g}-L{self.longueur:g}"
+        ).replace(".", "_")
+        return ArticleBOM(
+            reference=reference,
+            designation=self.designation,
+            categorie="Bois / tasseau",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.largeur,
+            hauteur_mm=self.hauteur,
+            volume_mm3=self.longueur * self.largeur * self.hauteur,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class PoutreI:
     """Poutre en I de type STEICOjoist SJ90/360.
 
@@ -143,7 +187,9 @@ class PoutreI:
 
     def article_bom(self) -> ArticleBOM:
         return ArticleBOM(
-            reference=(f"SJI-90x360-L{self.longueur:g}").replace(".", "_"),
+        reference=(
+            f"SJI-{self.largeur_membrure:g}x{self.hauteur:g}-L{self.longueur:g}"
+        ).replace(".", "_"),
             designation=self.designation,
             categorie="Bois / poutre en I",
             materiau=self.materiau,

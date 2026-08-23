@@ -29,6 +29,21 @@ class Nomenclaturable(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class LotBOM:
+    """Quantité d'un article sans dupliquer artificiellement les objets CAO."""
+
+    article: ArticleBOM
+    quantite_bom: int
+
+    def __post_init__(self) -> None:
+        if self.quantite_bom <= 0:
+            raise ValueError("la quantité BOM doit être strictement positive")
+
+    def article_bom(self) -> ArticleBOM:
+        return self.article
+
+
+@dataclass(frozen=True, slots=True)
 class LigneBOM:
     article: ArticleBOM
     quantite: int
@@ -53,7 +68,12 @@ class Nomenclature:
         articles: dict[ArticleBOM, int] = {}
         for piece in pieces:
             article = piece.article_bom()
-            articles[article] = articles.get(article, 0) + 1
+            quantite = getattr(piece, "quantite_bom", 1)
+            if not isinstance(quantite, int) or quantite <= 0:
+                raise ValueError(
+                    "la quantité BOM doit être un entier strictement positif"
+                )
+            articles[article] = articles.get(article, 0) + quantite
         self._lignes = tuple(
             LigneBOM(article, quantite)
             for article, quantite in sorted(
