@@ -1,0 +1,47 @@
+# Environnements Python
+.venv/
+venv/
+env/
+
+# Bytecode et caches Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+
+# Couverture et rapports de tests
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Paquets et sorties de build Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Nix et direnv
+.direnv/
+.envrc.local
+result
+result-*
+
+# Serveur OCP CAD Viewer
+.ocp-vscode.pid
+.ocp-vscode.log
+
+# Fichiers temporaires des éditeurs
+*.swp
+*.swo
+*~
+.idea/
+
+# Fichiers propres au système
+.DS_Store
+Thumbs.db
