@@ -22,6 +22,7 @@ class TestPlancherAFrame(unittest.TestCase):
             inclure_osb_caissons=True,
             inclure_isolant_caissons=True,
             inclure_osb_plancher=inclure_osb_plancher,
+            epaisseur_isolant_nominale=145,
         )
 
     def test_chassis_primaire(self) -> None:
@@ -140,8 +141,8 @@ class TestPlancherAFrame(unittest.TestCase):
         self.assertEqual(plancher.nombre_vis_osb, 768)
         self.assertEqual(len(panneaux), 24)
         self.assertAlmostEqual(premier.size.Y, 479)
-        self.assertAlmostEqual(premier.min.Z, 45)
-        self.assertAlmostEqual(premier.max.Z, 57)
+        self.assertAlmostEqual(premier.min.Z, 39)
+        self.assertAlmostEqual(premier.max.Z, 51)
         panneaux_interieurs = [
             element for element in panneaux if "de rive" not in element.nom
         ]
@@ -198,17 +199,19 @@ class TestPlancherAFrame(unittest.TestCase):
             boite = element.forme.bounding_box()
             self.assertAlmostEqual(boite.size.X, plancher.longueur_solives_i)
             self.assertAlmostEqual(boite.size.Y, 60)
-            self.assertAlmostEqual(boite.size.Z, 45)
-            self.assertAlmostEqual(boite.min.Z, 0)
-            self.assertAlmostEqual(boite.max.Z, 45)
+            self.assertAlmostEqual(boite.size.Z, 40)
+            self.assertAlmostEqual(boite.min.Z, -1)
+            self.assertAlmostEqual(boite.max.Z, 39)
+        self.assertEqual(plancher.nombre_vis_par_tasseau_rive, 6)
+        self.assertEqual(plancher.nombre_vis_tasseaux_rive, 24)
 
-    def test_trame_modulaire_steicoflex_sans_decoupe(self) -> None:
+    def test_trame_modulaire_isonat_sans_decoupe(self) -> None:
         plancher = self.plancher_modulaire()
         axes = plancher.axes_solives_i()
         isolants = [
             element
             for element in plancher.elements()
-            if element.nom.startswith("Isolant STEICOflex")
+            if element.nom.startswith("Isolant Isonat")
         ]
 
         self.assertEqual(plancher.nombre_lignes_solives_i, 11)
@@ -219,7 +222,7 @@ class TestPlancherAFrame(unittest.TestCase):
         )
         self.assertEqual(plancher.largeur_caisson_isolant, 565)
         self.assertEqual(plancher.longueur_caisson_isolant, 1_220)
-        self.assertEqual(plancher.hauteur_caisson_isolant, 138)
+        self.assertEqual(plancher.hauteur_caisson_isolant, 150)
         self.assertEqual(plancher.longueur_solives_i, 1_214)
         self.assertEqual(plancher.largeur_panneaux_osb_caissons, 562)
         self.assertEqual(plancher.largeur_panneaux_osb_rive, 562)
@@ -232,7 +235,7 @@ class TestPlancherAFrame(unittest.TestCase):
                     isolant.forme.bounding_box().size.Y,
                     isolant.forme.bounding_box().size.Z,
                 )
-                == (1_220, 565, 138)
+                == (1_220, 565, 145)
                 for isolant in isolants
             )
         )
@@ -249,16 +252,28 @@ class TestPlancherAFrame(unittest.TestCase):
         largeurs = [round(element.forme.bounding_box().size.X, 6) for element in panneaux]
         longueurs = [round(element.forme.bounding_box().size.Y, 6) for element in panneaux]
 
-        self.assertEqual(plancher.nombre_panneaux_osb_plancher, 22)
-        self.assertEqual(len(panneaux), 22)
-        self.assertEqual(largeurs.count(675), 18)
-        self.assertEqual(largeurs.count(104), 4)
-        self.assertEqual(longueurs.count(1_835), 6)
-        self.assertEqual(longueurs.count(1_719), 12)
-        self.assertEqual(longueurs.count(1_262), 2)
-        self.assertEqual(longueurs.count(689), 2)
-        self.assertEqual(plancher.nombre_dalles_brutes_osb_plancher, 17)
-        self.assertEqual(plancher.nombre_vis_osb_plancher, 483)
+        self.assertEqual(plancher.nombre_panneaux_osb_plancher, 28)
+        self.assertEqual(len(panneaux), 28)
+        self.assertEqual(largeurs.count(1_402), 28)
+        self.assertEqual(longueurs.count(573), 20)
+        self.assertEqual(longueurs.count(629), 4)
+        self.assertEqual(longueurs.count(60), 4)
+        self.assertEqual(plancher.nombre_dalles_brutes_osb_plancher, 28)
+        self.assertEqual(plancher.nombre_vis_osb_plancher, 776)
+        joints_x = tuple(
+            droite for _, droite in plancher.bandes_x_osb_plancher()[:-1]
+        )
+        self.assertEqual(joints_x, plancher.axes_traverses()[1:-1])
+        appuis_y = {
+            *plancher.axes_solives_i(),
+            -plancher.geometrie.largeur_interieure / 2
+            + plancher.section_largeur / 2,
+            plancher.geometrie.largeur_interieure / 2
+            - plancher.section_largeur / 2,
+        }
+        self.assertTrue(
+            set(plancher.limites_y_osb_plancher()[1:-1]) <= appuis_y
+        )
         self.assertTrue(
             all(
                 element.forme.bounding_box().min.Z == 240

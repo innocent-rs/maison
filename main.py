@@ -37,8 +37,8 @@ def make_part():
         inclure_connecteurs=True,
         inclure_solives_i=True,
         inclure_osb_caissons=True,
-        inclure_isolant_caissons=False,
-        inclure_osb_plancher=False,
+        inclure_isolant_caissons=True,
+        inclure_osb_plancher=True,
     )
     return MaisonAFrame(plancher, charpente, inclure_charpente=False)
 
@@ -91,25 +91,28 @@ if __name__ == "__main__":
             f"{plancher.nombre_dalles_brutes_osb_caissons} panneaux bruts "
             f"{plancher.longueur_dalle_osb_caissons:g} × "
             f"{plancher.largeur_dalle_osb_caissons:g} mm, "
-            f"{plancher.nombre_vis_osb} × vis 4X35"
+            f"{plancher.nombre_vis_osb} × SPAX 0191010400355"
         )
         print(
             f"Tasseaux de rive : {plancher.nombre_tasseaux_rive} × "
-            f"{plancher.largeur_membrure_solives_i:g} × 45 mm, "
-            f"L {plancher.longueur_solives_i:.2f} mm"
+            f"{plancher.largeur_membrure_solives_i:g} × "
+            f"{plancher.hauteur_tasseaux_rive:g} mm, "
+            f"L {plancher.longueur_solives_i:.2f} mm, "
+            f"{plancher.nombre_vis_tasseaux_rive} × Klimas 6X160"
         )
     if plancher.inclure_isolant_caissons:
         mode_pose = (
             "sans découpe"
             if plancher.trame_isolant_sans_decoupe
             else (
-                f"recoupé à {plancher.largeur_caisson_isolant:.0f} × "
-                f"{plancher.longueur_caisson_isolant:.0f} mm"
+                f"{plancher.nombre_segments_isolant_par_caisson} segments par "
+                f"caisson, découpés à {plancher.largeur_decoupe_isolant:.0f} × "
+                f"{plancher.longueur_decoupe_segment_isolant:.0f} mm"
             )
         )
         print(
-            f"Isolation : {plancher.nombre_panneaux_isolant} × STEICOflex 036 "
-            f"{plancher.epaisseur_isolant_nominale:g} × 575 × 1220 mm, "
+            f"Isolation : {plancher.nombre_panneaux_isolant} × Isonat Flex 55 "
+            f"{plancher.epaisseur_isolant_nominale:g} × 580 × 1220 mm, "
             f"{mode_pose}"
         )
     if plancher.inclure_osb_plancher:
@@ -117,7 +120,7 @@ if __name__ == "__main__":
             f"Plancher supérieur : {plancher.nombre_panneaux_osb_plancher} "
             f"découpes OSB {plancher.epaisseur_osb_plancher:g} mm, "
             f"{plancher.nombre_dalles_brutes_osb_plancher} dalles brutes, "
-            f"{plancher.nombre_vis_osb_plancher} × vis 5X60"
+            f"{plancher.nombre_vis_osb_plancher} × Klimas 5X60"
         )
         print(
             f"Réservations de pieds : {plancher.nombre_reservations_pieds} × "

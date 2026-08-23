@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 from main import make_part
-from maison.chiffrage import Chiffrage
+from maison.chiffrage import Chiffrage, ModeTarification
 from maison.prix import TARIFS
 
 
@@ -58,11 +58,19 @@ def lignes_recapitulatif_achats(chiffrage: Chiffrage) -> tuple[str, ...]:
             if ligne.cout_ttc_eur is not None
             else "prix à renseigner"
         )
-        besoin = (
-            f" ({ligne.ligne_bom.quantite} nécessaires)"
-            if tarif and tarif.quantite_par_conditionnement > 1
-            else ""
-        )
+        if tarif and tarif.mode is ModeTarification.LOT_LINEAIRE:
+            assert ligne.longueur_utile_m is not None
+            assert ligne.longueur_achetee_m is not None
+            besoin = (
+                f" ({ligne.longueur_utile_m:g} ml utiles ; "
+                f"{ligne.longueur_achetee_m:g} ml achetés)"
+            )
+        else:
+            besoin = (
+                f" ({ligne.ligne_bom.quantite} nécessaires)"
+                if tarif and tarif.quantite_par_conditionnement > 1
+                else ""
+            )
         lignes.append(
             f"  {nombre:>3} × {conditionnement} — {article.designation} "
             f"[{article.reference}]{besoin} — {cout}"

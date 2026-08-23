@@ -13,8 +13,9 @@ from .connecteurs import (
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
     VisPlancherOSB5x60,
+    VisTasseauKlimas6x160,
 )
-from .isolation import PanneauSTEICOflex036
+from .isolation import PanneauIsonatFlex55
 from .panneaux import (
     DalleOSB,
     PanneauFondCaissonOSB,
@@ -39,7 +40,7 @@ __all__ = [
     "PoutreI",
     "PanneauFondCaissonOSB",
     "PanneauPlancherOSB",
-    "PanneauSTEICOflex036",
+    "PanneauIsonatFlex55",
     "SabotEWH",
     "SabotSAI500_120_2",
     "Tasseau",
@@ -47,4 +48,5 @@ __all__ = [
     "VisBoisOSB4x35",
     "VisConnecteurCSA5x40",
     "VisPlancherOSB5x60",
+    "VisTasseauKlimas6x160",
 ]

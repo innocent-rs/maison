@@ -11,6 +11,7 @@ from maison.structure import (
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
     VisPlancherOSB5x60,
+    VisTasseauKlimas6x160,
 )
 
 
@@ -70,13 +71,19 @@ class TestConnecteurs(unittest.TestCase):
     def test_vis_osb_4x35(self) -> None:
         vis = VisBoisOSB4x35()
 
-        self.assertEqual(vis.article_bom().reference, "VIS-BOIS-OSB-4X35")
+        self.assertEqual(vis.article_bom().reference, "SPAX-0191010400355")
         self.assertEqual(vis.article_bom().longueur_mm, 35)
+
+    def test_vis_structurelle_des_tasseaux_6x160(self) -> None:
+        vis = VisTasseauKlimas6x160()
+
+        self.assertEqual(vis.article_bom().reference, "KLIMAS-KMWHT-6X160")
+        self.assertEqual(vis.article_bom().longueur_mm, 160)
 
     def test_vis_plancher_osb_5x60(self) -> None:
         vis = VisPlancherOSB5x60()
 
-        self.assertEqual(vis.article_bom().reference, "VIS-PLANCHER-OSB-5X60")
+        self.assertEqual(vis.article_bom().reference, "KLIMAS-KMWHT-5X60")
         self.assertEqual(vis.article_bom().longueur_mm, 60)
 
     def test_ferrure_pied_a_frame_provisoire(self) -> None:

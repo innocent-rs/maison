@@ -63,11 +63,12 @@ class TestNomenclature(unittest.TestCase):
         ]
 
         self.assertEqual(sorted(ligne.quantite for ligne in lignes_osb), [4, 20])
-        self.assertEqual(lignes["VIS-BOIS-OSB-4X35"].quantite, 768)
+        self.assertEqual(lignes["SPAX-0191010400355"].quantite, 768)
+        self.assertEqual(lignes["KLIMAS-KMWHT-6X160"].quantite, 36)
         ligne_tasseaux = next(
             ligne
             for reference, ligne in lignes.items()
-            if reference.startswith("TAS-60x45-")
+            if reference.startswith("TAS-60x40-")
         )
         self.assertEqual(ligne_tasseaux.quantite, 4)
 
@@ -84,16 +85,17 @@ class TestNomenclature(unittest.TestCase):
             inclure_osb_caissons=True,
             inclure_isolant_caissons=True,
             inclure_osb_plancher=True,
+            epaisseur_isolant_nominale=145,
         )
         lignes = {
             ligne.article.reference: ligne for ligne in plancher.nomenclature().lignes
         }
 
         self.assertEqual(
-            lignes["ISOL-STEICOFLEX036-145x575x1220"].quantite,
+            lignes["ISOL-ISONAT-FLEX55-145x580x1220"].quantite,
             24,
         )
-        self.assertEqual(lignes["VIS-BOIS-OSB-4X35"].quantite, 384)
+        self.assertEqual(lignes["SPAX-0191010400355"].quantite, 384)
         lignes_osb = [
             ligne
             for reference, ligne in lignes.items()
@@ -105,8 +107,8 @@ class TestNomenclature(unittest.TestCase):
             for reference, ligne in lignes.items()
             if reference.startswith("OSB-PLANCHER-")
         ]
-        self.assertEqual(sum(ligne.quantite for ligne in lignes_osb_plancher), 22)
-        self.assertEqual(lignes["VIS-PLANCHER-OSB-5X60"].quantite, 483)
+        self.assertEqual(sum(ligne.quantite for ligne in lignes_osb_plancher), 28)
+        self.assertEqual(lignes["KLIMAS-KMWHT-5X60"].quantite, 776)
 
 
 if __name__ == "__main__":

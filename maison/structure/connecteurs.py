@@ -325,11 +325,11 @@ class PointeAncrageCNA4x35:
 
 @dataclass(frozen=True, slots=True)
 class VisBoisOSB4x35:
-    """Vis bois générique pour fixer l'OSB aux membrures basses."""
+    """SPAX universelle à filetage partiel pour les fonds OSB de 12 mm."""
 
     diametre: float = 4.0
     longueur: float = 35.0
-    materiau: str = "Acier zingué"
+    materiau: str = "Acier avec finition SPAX WIROX"
 
     def __post_init__(self) -> None:
         if min(self.diametre, self.longueur) <= 0:
@@ -337,8 +337,11 @@ class VisBoisOSB4x35:
 
     def article_bom(self) -> ArticleBOM:
         return ArticleBOM(
-            reference="VIS-BOIS-OSB-4X35",
-            designation="Vis bois pour OSB 4 × 35 mm",
+            reference="SPAX-0191010400355",
+            designation=(
+                "SPAX universelle 4 × 35 mm, filetage partiel, "
+                "tête fraisée T-STAR plus T20, WIROX"
+            ),
             categorie="Fixation / vis panneau",
             materiau=self.materiau,
             longueur_mm=self.longueur,
@@ -347,12 +350,12 @@ class VisBoisOSB4x35:
 
 
 @dataclass(frozen=True, slots=True)
-class VisPlancherOSB5x60:
-    """Vis bois à filetage complet pour le plancher porteur en OSB de 22 mm."""
+class VisTasseauKlimas6x160:
+    """Vis structurelle pour fixer les lambourdes de rive aux madriers."""
 
-    diametre: float = 5.0
-    longueur: float = 60.0
-    materiau: str = "Acier zingué"
+    diametre: float = 6.0
+    longueur: float = 160.0
+    materiau: str = "Acier carbone galvanisé"
 
     def __post_init__(self) -> None:
         if min(self.diametre, self.longueur) <= 0:
@@ -360,8 +363,31 @@ class VisPlancherOSB5x60:
 
     def article_bom(self) -> ArticleBOM:
         return ArticleBOM(
-            reference="VIS-PLANCHER-OSB-5X60",
-            designation="Vis bois pour plancher OSB 5 × 60 mm",
+            reference="KLIMAS-KMWHT-6X160",
+            designation="Vis structurelle Klimas KMWHT 6 × 160 mm",
+            categorie="Fixation / vis structurelle bois",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.diametre,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class VisPlancherOSB5x60:
+    """Vis Klimas à filetage partiel pour le plancher porteur en OSB de 22 mm."""
+
+    diametre: float = 5.0
+    longueur: float = 60.0
+    materiau: str = "Acier carbone galvanisé"
+
+    def __post_init__(self) -> None:
+        if min(self.diametre, self.longueur) <= 0:
+            raise ValueError("les dimensions de la vis doivent être positives")
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference="KLIMAS-KMWHT-5X60",
+            designation="Vis bois Klimas KMWHT 5 × 60 mm, filetage partiel",
             categorie="Fixation / vis plancher",
             materiau=self.materiau,
             longueur_mm=self.longueur,

@@ -76,8 +76,8 @@ implémenter `article_bom()` ; elle est ensuite agrégée sans modifier l'export
 
 Les tarifs TTC sont maintenus directement en Python dans
 `maison/prix.py`. Un tarif représente toujours une unité réellement achetée :
-une barre complète, une pièce ou une boîte. Il n'existe pas de facturation de
-la seule longueur utile.
+une barre complète, une pièce, une boîte ou un lot minimal exprimé en mètres
+linéaires. Il n'existe pas de facturation de la seule longueur utile.
 
 Pour regrouper plusieurs coupes dans un même produit commercial, les références
 BOM concernées partagent une instance de `Tarif.en_barres` :
@@ -129,6 +129,23 @@ Enfin, pour une boîte de vis :
 Avec `300` CSA dans des boîtes de `250`, le calcul achète deux boîtes. L'arrondi
 se fait toujours au conditionnement supérieur.
 
+Lorsqu'un fournisseur impose un minimum en mètres linéaires sans publier les
+longueurs unitaires livrées, utiliser un lot linéaire plutôt que d'inventer des
+barres de stock :
+
+```python
+"TAS-60x40-L2212": Tarif.en_lots_lineaires(
+    "182.00",                         # 20 ml × 9,10 € TTC/ml
+    longueur_du_lot_mm=20_000,
+    conditionnement="commande minimale de 20 ml",
+    fournisseur="Matériaux Naturels",
+)
+```
+
+Les quatre tasseaux actifs demandent `8,848 ml`, mais le chiffrage achète donc
+un lot de `20 ml` à `182,00 € TTC` et expose `11,152 ml` de surplus. Si le
+besoin dépasse `20 ml`, le nombre de lots est automatiquement arrondi au-dessus.
+
 Générer les trois chiffrages :
 
 ```console
@@ -148,6 +165,10 @@ just chiffrage total
 résultat porte le statut `INCOMPLET` ; le sous-total affiché ne comprend que les
 lignes renseignées. Pour faire échouer une automatisation en présence d'un prix
 manquant, lancer `python chiffrer.py --lot total --strict`.
+
+Le CSV distingue la longueur utile de la BOM, la longueur de l'unité d'achat et
+la longueur réellement achetée. Le chiffrage actif du plancher est actuellement
+complet et vaut `3 448,50 € TTC` avec les tarifs datés du `2026-08-23`.
 
 Afficher et exporter séparément le plan de débit :
 
@@ -220,33 +241,43 @@ poutres commerciales entières de `13 m`.
 Les quatorze fonds de caisson actifs sont en OSB 3 BD de `12 mm` et mesurent
 `527,286 × 2212 mm` avec un jeu latéral total de `3 mm`. Dix panneaux
 intérieurs sont encochés autour des EWH et quatre panneaux de rive restent
-rectangulaires. Quatre tasseaux de rive `60 × 45 × 2212 mm` complètent leurs
-appuis. La fixation utilise `420` vis `4 × 35 mm`.
+rectangulaires. Quatre lambourdes de rive Douglas rabotées et séchées
+`60 × 40 × 2212 mm`, descendues de `1 mm`, complètent leurs appuis au niveau
+des membrures STEICO réelles de `60 × 39 mm`. Elles sont fixées aux madriers
+par `32` vis structurelles Klimas `6 × 160 mm`. La fixation des fonds utilise
+`420` SPAX `0191010400355` à filetage partiel, achetées dans une boîte de
+`1 000`.
 
 Deux découpes entrent dans chaque panneau commercial BD de
-`12 × 2800 × 1196 mm` : le chiffrage achète donc sept panneaux entiers. La BOM
-d'achat active contient dix références : bois primaire, poutres en I,
-connecteurs Simpson, tasseaux, OSB BD et visserie. L'isolant, le plancher OSB
-supérieur et les éléments de charpente restent désactivés.
+`12 × 2800 × 1196 mm` : le chiffrage achète donc sept panneaux entiers.
 
-### Configuration complète conservée mais désactivée
+Les quatorze caissons de `150 × 530,286 × 2218 mm` reçoivent de l'[Isonat Flex
+55 Contact](https://www.materiaux-naturels.fr/produit/437-isonat-flex-55-plus-h-panneau-laine-de-bois)
+de `145 mm` (R nominal `4,03 m².K/W`). Cette épaisseur laisse `5 mm` dans la
+hauteur libre sans comprimer verticalement le panneau ; la variante de `160 mm`
+aurait dû être écrasée de `10 mm`. Chaque caisson reçoit deux segments posés de
+`145 × 530,286 × 1109 mm`, débités avec une surcote de maintien de `10 mm` en
+largeur et en longueur. Il faut donc vingt-huit panneaux bruts
+`145 × 580 × 1220 mm`, soit sept colis de quatre. Au tarif promotionnel daté du
+`2026-08-23`, l'isolant ajoute `339,36 € TTC`.
 
-Les composants suivants restent paramétriques et testés dans le dépôt, mais ne
-sont plus instanciés par `main.make_part()` et ne participent pas au chiffrage.
+Le plancher supérieur actif est en OSB 3 rainuré-languetté de `22 mm`, au niveau
+`Z = 240–262 mm`. Les dalles commerciales `675 × 2500 mm` sont orientées avec
+leur longueur suivant X. Deux portées de `2400 mm` se rejoignent exactement sur
+la traverse centrale à `X = 2400 mm` ; la rainure et la languette de cette rive
+peuvent ainsi être conservées en recoupant les `100 mm` aux extrémités libres.
 
-L'isolation emploie vingt-huit panneaux bruts STEICOflex 036
-`145 × 575 × 1220 mm`, recoupés à environ `138 × 530,286 × 1049 mm` pour la
-pose. La compression verticale de principe est donc de `7 mm`. Le changement
-d'emprise abandonne volontairement l'ancien objectif de panneaux isolants sans
-découpe.
+Suivant Y, les six solives en I définissent sept bandes : deux bandes de rive de
+`654,286 mm` et cinq bandes intérieures de `538,286 mm`. Les rives découpées de
+chaque bande sont centrées sur les membrures de `60 mm`. Les quatorze panneaux
+posés ont donc tous leurs joints intérieurs sur une traverse ou une solive :
+aucun raccord ne reste au-dessus du vide. Le calepinage achète quatorze dalles
+brutes à `27,51 € TTC`, soit `385,14 € TTC`, et prévoit `568` vis Klimas
+`5 × 60 mm`, achetées dans trois boîtes de `200` pour `32,40 € TTC`.
 
-Le plancher supérieur reste en OSB 3 rainuré-languetté de `22 mm`, au niveau
-fini `Z = 272 mm`. Son calepinage comporte sept bandes de `675 mm` et une bande
-de rive de `75 mm`, avec des joints courts alternés sur les deux poutres en I
-centrales. Il comprend seize découpes, budgétées dans quinze dalles brutes
-`675 × 2500 mm`, et `422` vis `5 × 60 mm`. Vingt réservations
-`120 × 120 mm`, deux par ferme, dégagent maintenant les poutres de rive afin
-que les pieds d'arbalétrier portent directement sur le bois et non sur l'OSB.
+La BOM d'achat active contient quatorze références : bois primaire, poutres en
+I, connecteurs Simpson, tasseaux, OSB BD, OSB RL, isolant et visserie. Seuls les
+éléments de charpente restent désactivés.
 
 La géométrie CAO des connecteurs représente leur enveloppe utile sans détailler
 les trous. Les fixations d'exécution devront suivre les plans certifiés des

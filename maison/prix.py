@@ -4,8 +4,9 @@ Renseigner les prix TTC et les conditionnements ici. Les références sont celle
 de ``build/bom.csv``. Une valeur ``None`` est volontairement considérée comme
 manquante par le chiffrage.
 
-Exemples : ``Tarif.par_conditionnement("29.90", 250, "boîte de 250")`` ou
-``Tarif.en_barres("183.30", longueur_commerciale_mm=13_000, ...)``. Le prix
+Exemples : ``Tarif.par_conditionnement("29.90", 250, "boîte de 250")``,
+``Tarif.en_barres("183.30", longueur_commerciale_mm=13_000, ...)`` ou
+``Tarif.en_lots_lineaires("182", longueur_du_lot_mm=20_000, ...)``. Le prix
 représente toujours une unité achetée entière, jamais une longueur utile.
 """
 
@@ -13,7 +14,7 @@ from maison.chiffrage import Tarif
 
 
 # Les prix linéaires affichés par les vendeurs sont convertis au prix de la
-# barre commerciale complète avant d'être enregistrés ici.
+# barre commerciale complète ou du minimum de commande avant enregistrement.
 PRIX_DOUGLAS_CONTRECOLLE_120X240_TTC_PAR_BARRE: str | None = "693.23"
 PRIX_SJ60X240_TTC_PAR_BARRE: str | None = "183.30"
 
@@ -53,7 +54,21 @@ TARIFS: dict[str, Tarif] = {
     "FERRURE-PIED-AFRAME-PROV-120": Tarif(
         note="Pièce provisoire : tarif seulement après dimensionnement"
     ),
-    "ISOL-STEICOFLEX036-145x575x1220": Tarif(),
+    "ISOL-ISONAT-FLEX55-145x580x1220": Tarif.par_conditionnement(
+        "48.48",
+        quantite=4,
+        conditionnement="colis de 4 panneaux",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-23",
+        url=(
+            "https://www.materiaux-naturels.fr/produit-decl/4739-"
+            "isonat-flex-55-plus-h-panneau-laine-de-bois-145mm-0.58x1.22m-"
+        ),
+        note=(
+            "2,8304 m² par colis ; tarif promotionnel de 17,13 € TTC/m² "
+            "valable jusqu'au 31/08/2026"
+        ),
+    ),
     "KIT-TIRANT-AFRAME-M16-L4000": Tarif(
         note="Kit complet avec tige, platines, écrous et réglage"
     ),
@@ -129,7 +144,58 @@ TARIFS: dict[str, Tarif] = {
         note="Six sabots, un à chaque about des trois traverses",
     ),
     "SJI-60x240-L2212": TARIF_STEICOJOIST_SJ60X240,
-    "TAS-60x45-L1043": Tarif(note="Produit commercial du tasseau à définir"),
-    "VIS-BOIS-OSB-4X35": Tarif(),
-    "VIS-PLANCHER-OSB-5X60": Tarif(),
+    "TAS-60x40-L2212": Tarif.en_lots_lineaires(
+        "182.00",
+        longueur_du_lot_mm=20_000,
+        conditionnement="commande minimale de 20 ml",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-23",
+        url=(
+            "https://www.materiaux-naturels.fr/produit-decl/5687-"
+            "lambourde-en-douglas--60x40mm-rabotee-2-faces-seche"
+        ),
+        note=(
+            "Minimum fournisseur de 20 ml à 9,10 € TTC/ml ; "
+            "longueurs de livraison non publiées"
+        ),
+    ),
+    "SPAX-0191010400355": Tarif.par_conditionnement(
+        "28.00",
+        quantite=1_000,
+        conditionnement="boîte de 1 000",
+        fournisseur="SPAX / tarif communiqué par le maître d'ouvrage",
+        date_tarif="2026-08-23",
+        url=(
+            "https://www.spax.com/de-de/p/universalschraube-teilgewinde-"
+            "senkkopf-t-star-plus-4cut-wirox.html"
+        ),
+        note="Référence fabricant 0191010400355 ; filetage partiel de 23 mm",
+    ),
+    "KLIMAS-KMWHT-6X160": Tarif.par_conditionnement(
+        "27.50",
+        quantite=100,
+        conditionnement="boîte de 100",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-23",
+        url=(
+            "https://www.materiaux-naturels.fr/produit/1873-"
+            "vis-torx-construction-bois-charpente"
+        ),
+        note=(
+            "Plan provisoire : fixation latérale des lambourdes de rive, "
+            "entraxe maximal 300 mm"
+        ),
+    ),
+    "KLIMAS-KMWHT-5X60": Tarif.par_conditionnement(
+        "10.80",
+        quantite=200,
+        conditionnement="boîte de 200",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-23",
+        url=(
+            "https://www.materiaux-naturels.fr/produit-decl/8653-"
+            "vis-torx-construction-bois-charpente-5x60"
+        ),
+        note="Trois boîtes nécessaires pour les 568 vis du plancher OSB",
+    ),
 }

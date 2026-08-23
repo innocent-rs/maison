@@ -17,6 +17,7 @@ from maison.optimisation import PieceDebit, PlanDebit, optimiser_debit
 class ModeTarification(StrEnum):
     CONDITIONNEMENT = "conditionnement"
     BARRE_COMMERCIALE = "barre_commerciale"
+    LOT_LINEAIRE = "lot_lineaire"
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,10 +25,10 @@ class Tarif:
     """Prix TTC unitaire d'une référence BOM.
 
     Le prix représente toujours une unité réellement achetée : une pièce, une
-    boîte ou une barre commerciale complète. En mode ``BARRE_COMMERCIALE``, le
-    nombre de barres est déterminé par le plan de débit. Un prix à ``None``
-    conserve le mode et les informations fournisseur sans inclure
-    silencieusement la ligne dans le total.
+    boîte, une barre commerciale complète ou un lot de longueur minimale. En
+    mode ``BARRE_COMMERCIALE``, le nombre de barres est déterminé par le plan de
+    débit. Un prix à ``None`` conserve le mode et les informations fournisseur
+    sans inclure silencieusement la ligne dans le total.
     """
 
     prix_unitaire_ttc_eur: Decimal | str | float | None = None
@@ -41,6 +42,7 @@ class Tarif:
     reference_achat: str = ""
     designation_achat: str = ""
     longueur_commerciale_mm: Decimal | str | float | None = None
+    longueur_par_conditionnement_mm: Decimal | str | float | None = None
     trait_scie_mm: Decimal | str | float = 0
 
     def __post_init__(self) -> None:
@@ -52,6 +54,11 @@ class Tarif:
             and self.quantite_par_conditionnement != 1
         ):
             raise ValueError("une barre n'utilise pas de conditionnement")
+        if (
+            self.mode is ModeTarification.LOT_LINEAIRE
+            and self.quantite_par_conditionnement != 1
+        ):
+            raise ValueError("un lot linéaire est défini par sa longueur")
         if self.prix_unitaire_ttc_eur is not None:
             prix = Decimal(str(self.prix_unitaire_ttc_eur))
             if prix < 0:
@@ -66,6 +73,15 @@ class Tarif:
             if longueur <= 0:
                 raise ValueError("la longueur commerciale doit être positive")
             object.__setattr__(self, "longueur_commerciale_mm", longueur)
+        if self.longueur_par_conditionnement_mm is not None:
+            longueur_lot = Decimal(str(self.longueur_par_conditionnement_mm))
+            if longueur_lot <= 0:
+                raise ValueError("la longueur d'un lot doit être positive")
+            object.__setattr__(
+                self,
+                "longueur_par_conditionnement_mm",
+                longueur_lot,
+            )
         if self.mode is ModeTarification.BARRE_COMMERCIALE:
             if not self.reference_achat:
                 raise ValueError("une barre commerciale exige une référence d'achat")
@@ -73,6 +89,11 @@ class Tarif:
                 raise ValueError("une barre commerciale exige une longueur de stock")
             if not self.designation_achat:
                 object.__setattr__(self, "designation_achat", self.reference_achat)
+        if (
+            self.mode is ModeTarification.LOT_LINEAIRE
+            and self.longueur_par_conditionnement_mm is None
+        ):
+            raise ValueError("un lot linéaire exige une longueur de conditionnement")
 
     @classmethod
     def par_conditionnement(
@@ -113,6 +134,24 @@ class Tarif:
             **informations,
         )
 
+    @classmethod
+    def en_lots_lineaires(
+        cls,
+        prix_ttc_du_lot: Decimal | str | float | None,
+        *,
+        longueur_du_lot_mm: Decimal | str | float,
+        conditionnement: str,
+        **informations,
+    ) -> Tarif:
+        """Tarifie une longueur minimale imposée sans inventer des barres."""
+        return cls(
+            prix_unitaire_ttc_eur=prix_ttc_du_lot,
+            mode=ModeTarification.LOT_LINEAIRE,
+            conditionnement=conditionnement,
+            longueur_par_conditionnement_mm=longueur_du_lot_mm,
+            **informations,
+        )
+
     @property
     def est_renseigne(self) -> bool:
         return self.prix_unitaire_ttc_eur is not None
@@ -128,6 +167,18 @@ class LigneChiffrage:
     def nombre_conditionnements(self) -> int | None:
         if self.tarif and self.tarif.mode is ModeTarification.BARRE_COMMERCIALE:
             return None
+        if self.tarif and self.tarif.mode is ModeTarification.LOT_LINEAIRE:
+            longueur_totale = self.ligne_bom.longueur_totale_mm
+            if longueur_totale is None:
+                raise ValueError(
+                    f"{self.ligne_bom.article.reference} n'a pas de longueur "
+                    "pour être acheté en lot linéaire"
+                )
+            assert self.tarif.longueur_par_conditionnement_mm is not None
+            return ceil(
+                Decimal(str(longueur_totale))
+                / self.tarif.longueur_par_conditionnement_mm
+            )
         quantite_par_lot = (
             self.tarif.quantite_par_conditionnement if self.tarif else 1
         )
@@ -158,6 +209,25 @@ class LigneChiffrage:
             return None
         assert self.tarif.prix_unitaire_ttc_eur is not None
         return self.tarif.prix_unitaire_ttc_eur * self.quantite_facturee
+
+    @property
+    def longueur_utile_m(self) -> Decimal | None:
+        longueur = self.ligne_bom.longueur_totale_mm
+        if longueur is None:
+            return None
+        return Decimal(str(longueur)) / Decimal("1000")
+
+    @property
+    def longueur_achetee_m(self) -> Decimal | None:
+        if not self.tarif or self.tarif.mode is not ModeTarification.LOT_LINEAIRE:
+            return None
+        assert self.tarif.longueur_par_conditionnement_mm is not None
+        assert self.nombre_conditionnements is not None
+        return (
+            self.tarif.longueur_par_conditionnement_mm
+            * self.nombre_conditionnements
+            / Decimal("1000")
+        )
 
     @property
     def est_dans_plan_debit(self) -> bool:
@@ -313,8 +383,10 @@ class Chiffrage:
                     "longueur_totale_m",
                     "mode_tarification",
                     "quantite_par_conditionnement",
+                    "longueur_unite_achat_m",
                     "nombre_conditionnements",
                     "quantite_facturee",
+                    "longueur_achetee_m",
                     "unite_facturation",
                     "prix_unitaire_ttc_eur",
                     "cout_ttc_eur",
@@ -342,8 +414,18 @@ class Chiffrage:
                         ),
                         tarif.mode.value if tarif else "conditionnement",
                         tarif.quantite_par_conditionnement if tarif else 1,
+                        _nombre_divise(
+                            (
+                                tarif.longueur_par_conditionnement_mm
+                                if tarif
+                                and tarif.mode is ModeTarification.LOT_LINEAIRE
+                                else None
+                            ),
+                            Decimal("1000"),
+                        ),
                         "" if dans_plan else ligne.nombre_conditionnements or "",
                         "" if dans_plan else _nombre(ligne.quantite_facturee),
+                        "" if dans_plan else _nombre_optionnel(ligne.longueur_achetee_m),
                         ligne.unite_facturation,
                         _euros(tarif.prix_unitaire_ttc_eur if tarif else None),
                         _euros(ligne.cout_ttc_eur),
@@ -376,8 +458,16 @@ class Chiffrage:
                         ),
                         ModeTarification.BARRE_COMMERCIALE.value,
                         1,
+                        _nombre_divise(
+                            tarif.longueur_commerciale_mm,
+                            Decimal("1000"),
+                        ),
                         plan.nombre_barres,
                         plan.nombre_barres,
+                        _nombre_divise(
+                            plan.longueur_achetee_mm,
+                            Decimal("1000"),
+                        ),
                         "barre",
                         _euros(tarif.prix_unitaire_ttc_eur),
                         _euros(plan_chiffre.cout_ttc_eur),
@@ -399,6 +489,8 @@ class Chiffrage:
                     "SOUS-TOTAL-RENSEIGNE",
                     "",
                     "Sous-total TTC des seules lignes renseignées",
+                    "",
+                    "",
                     "",
                     "",
                     "",
@@ -492,12 +584,16 @@ def _nombre(valeur: Decimal | int | float) -> str:
 
 
 def _nombre_divise(
-    valeur: float | None,
+    valeur: Decimal | float | None,
     diviseur: Decimal,
 ) -> str:
     if valeur is None:
         return ""
     return _nombre(Decimal(str(valeur)) / diviseur)
+
+
+def _nombre_optionnel(valeur: Decimal | None) -> str:
+    return "" if valeur is None else _nombre(valeur)
 
 
 def _pourcentage(valeur: Decimal) -> str:

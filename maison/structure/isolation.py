@@ -8,17 +8,20 @@ from maison.nomenclature import ArticleBOM
 
 
 @dataclass(frozen=True, slots=True)
-class PanneauSTEICOflex036:
-    """Panneau flexible acheté entier et représenté comprimé dans son caisson."""
+class PanneauIsonatFlex55:
+    """Panneau Isonat acheté entier et représenté à ses dimensions de pose."""
 
-    epaisseur: float = 120.0
-    largeur: float = 575.0
+    epaisseurs_disponibles = (40, 60, 80, 100, 120, 145, 160, 180, 200, 220, 240)
+
+    epaisseur: float = 145.0
+    largeur: float = 580.0
     longueur: float = 1_220.0
-    epaisseur_pose: float = 118.0
+    epaisseur_pose: float = 145.0
     largeur_pose: float = 565.0
     longueur_pose: float | None = None
     conductivite_thermique: float = 0.036
-    materiau: str = "Fibre de bois semi-rigide STEICOflex 036"
+    densite_kg_m3: float = 55.0
+    materiau: str = "Fibre de bois semi-rigide Isonat Flex 55 Contact"
 
     def __post_init__(self) -> None:
         dimensions = (
@@ -30,6 +33,10 @@ class PanneauSTEICOflex036:
         )
         if min(dimensions) <= 0:
             raise ValueError("les dimensions de l'isolant doivent être positives")
+        if self.epaisseur not in self.epaisseurs_disponibles:
+            raise ValueError(
+                "l'épaisseur demandée n'existe pas dans la gamme Isonat Flex 55"
+            )
         if self.epaisseur_pose > self.epaisseur:
             raise ValueError("l'épaisseur posée dépasse l'épaisseur nominale")
         if self.largeur_pose > self.largeur:
@@ -58,13 +65,13 @@ class PanneauSTEICOflex036:
 
     def article_bom(self) -> ArticleBOM:
         reference = (
-            f"ISOL-STEICOFLEX036-{self.epaisseur:g}x"
+            f"ISOL-ISONAT-FLEX55-{self.epaisseur:g}x"
             f"{self.largeur:g}x{self.longueur:g}"
         ).replace(".", "_")
         return ArticleBOM(
             reference=reference,
             designation=(
-                f"Panneau STEICOflex 036 {self.epaisseur:g} × "
+                f"Panneau Isonat Flex 55 Contact {self.epaisseur:g} × "
                 f"{self.largeur:g} × {self.longueur:g} mm"
             ),
             categorie="Isolation / fibre de bois",

@@ -274,14 +274,14 @@ class Tasseau:
 class PoutreI:
     """Poutre en I de type STEICOjoist SJ60/240.
 
-    La géométrie utilise deux membrures de 60 × 45 mm et une âme centrée de
+    La géométrie utilise deux membrures de 60 × 39 mm et une âme centrée de
     8 mm. Les dimensions restent paramétrables pour de futures variantes.
     """
 
     longueur: float
     hauteur: float = 240.0
     largeur_membrure: float = 60.0
-    hauteur_membrure: float = 45.0
+    hauteur_membrure: float = 39.0
     epaisseur_ame: float = 8.0
     modele: str | None = None
     materiau: str = "Membrures bois/LVL et âme en fibre de bois"

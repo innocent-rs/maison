@@ -7,7 +7,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from main import make_part
-from maison.chiffrage import Chiffrage
+from maison.chiffrage import Chiffrage, ModeTarification
 from maison.prix import TARIFS
 from maison.structure import DalleOSB, TypeBordsOSB
 
@@ -78,6 +78,33 @@ def lignes_resume_panneaux_osb(plancher) -> tuple[str, ...]:
     )
 
 
+def lignes_resume_lots_lineaires(chiffrage: Chiffrage) -> tuple[str, ...]:
+    """Résume les achats imposant une quantité linéaire minimale."""
+    lignes: list[str] = []
+    for ligne in chiffrage.lignes:
+        tarif = ligne.tarif
+        if not tarif or tarif.mode is not ModeTarification.LOT_LINEAIRE:
+            continue
+        assert ligne.longueur_utile_m is not None
+        assert ligne.longueur_achetee_m is not None
+        surplus = ligne.longueur_achetee_m - ligne.longueur_utile_m
+        nombre = ligne.nombre_conditionnements
+        assert nombre is not None
+        cout = (
+            f"{ligne.cout_ttc_eur:.2f} € TTC"
+            if ligne.cout_ttc_eur is not None
+            else "prix à renseigner"
+        )
+        lignes.append(
+            f"{ligne.ligne_bom.article.reference} : "
+            f"{nombre} × {tarif.conditionnement} — "
+            f"utile {ligne.longueur_utile_m:g} m ; "
+            f"acheté {ligne.longueur_achetee_m:g} m ; "
+            f"surplus {surplus:g} m — {cout}"
+        )
+    return tuple(lignes)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -96,11 +123,16 @@ def main() -> None:
         if lot in ("plancher", "total")
         else ()
     )
+    lignes_lots_lineaires = lignes_resume_lots_lineaires(chiffrage)
     destination = Path("build") / f"debit_{lot}.csv"
     destination.parent.mkdir(parents=True, exist_ok=True)
     chiffrage.ecrire_debits_csv(destination)
 
-    if not chiffrage.plans_debit and not lignes_panneaux:
+    if (
+        not chiffrage.plans_debit
+        and not lignes_panneaux
+        and not lignes_lots_lineaires
+    ):
         print(f"{lot} : aucun produit à optimiser")
         print(f"CSV écrit dans {destination}")
         return
@@ -128,6 +160,8 @@ def main() -> None:
             f"rendement {plan.taux_utilisation * Decimal('100'):.2f} % ; {cout}"
         )
     for ligne in lignes_panneaux:
+        print(ligne)
+    for ligne in lignes_lots_lineaires:
         print(ligne)
     print(f"CSV écrit dans {destination}")
 
