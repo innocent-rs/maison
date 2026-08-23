@@ -5,11 +5,25 @@ from maison.structure import PlancherAFrame
 
 
 class TestPlancherAFrame(unittest.TestCase):
-    def test_entraxe_et_nombre_elements(self) -> None:
+    def test_chassis_primaire(self) -> None:
         plancher = PlancherAFrame(GeometrieAFrame())
 
-        self.assertLessEqual(plancher.entraxe_reel, 600)
-        self.assertEqual(len(plancher.elements()), plancher.nombre_solives + 2)
+        self.assertEqual(plancher.nombre_traverses, 3)
+        self.assertEqual(len(plancher.elements()), 5)
+        self.assertAlmostEqual(
+            plancher.entraxe_traverses,
+            (plancher.geometrie.longueur_interieure - plancher.section_largeur) / 2,
+        )
+        self.assertEqual(
+            [element.nom for element in plancher.elements()[2:5]],
+            ["Traverse haute", "Traverse milieu", "Traverse basse"],
+        )
+    def test_solives_i_optionnelles(self) -> None:
+        plancher = PlancherAFrame(GeometrieAFrame(), inclure_solives_i=True)
+
+        self.assertEqual(plancher.nombre_solives_i, 11)
+        self.assertLessEqual(plancher.entraxe_solives_i, 500)
+        self.assertEqual(len(plancher.elements()), 5 + plancher.nombre_solives_i)
 
     def test_encombrement(self) -> None:
         plancher = PlancherAFrame(GeometrieAFrame())
@@ -24,6 +38,28 @@ class TestPlancherAFrame(unittest.TestCase):
         self.assertAlmostEqual(xmax, plancher.geometrie.longueur_interieure)
         self.assertAlmostEqual(ymin, -plancher.geometrie.largeur_interieure / 2)
         self.assertAlmostEqual(ymax, plancher.geometrie.largeur_interieure / 2)
+
+    def test_sections_et_assemblages(self) -> None:
+        plancher = PlancherAFrame(GeometrieAFrame())
+        poutre_gauche, _, traverse_haute, traverse_milieu, _ = plancher.elements()
+
+        self.assertEqual(
+            (
+                poutre_gauche.piece.largeur,
+                poutre_gauche.piece.hauteur,
+            ),
+            (120, 250),
+        )
+        self.assertLess(
+            poutre_gauche.forme.volume,
+            poutre_gauche.piece.construire().volume,
+        )
+        self.assertLess(
+            traverse_haute.forme.volume,
+            traverse_haute.piece.construire().volume,
+        )
+        self.assertEqual(traverse_milieu.piece.longueur, 6_000)
+        self.assertEqual(plancher.niveau_haut_traverses, 250)
 
 
 if __name__ == "__main__":

@@ -63,3 +63,7 @@ test:
 # Génère la nomenclature chiffrable dans build/bom.csv
 bom:
     python bom.py
+
+# Compare les premiers cas de charge du châssis primaire
+simulate:
+    python simulate.py

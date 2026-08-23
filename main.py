@@ -24,9 +24,16 @@ if __name__ == "__main__":
     print(f"Surface de plancher : {geometrie.surface_plancher:.2f} m²")
     print(f"Surface théorique ≥ 1,80 m : {geometrie.surface_comptable_cible:.2f} m²")
     print(
-        f"Solives : {plancher.nombre_solives}, "
-        f"entraxe réel {plancher.entraxe_reel:.0f} mm"
+        f"Traverses primaires : {plancher.nombre_traverses}, "
+        f"entraxe {plancher.entraxe_traverses:.0f} mm"
     )
+    if plancher.inclure_solives_i:
+        print(
+            f"Solives en I : {plancher.nombre_solives_i}, "
+            f"entraxe {plancher.entraxe_solives_i:.0f} mm"
+        )
+    else:
+        print("Solives en I : désactivées")
 
     show(
         *(element.forme for element in elements),

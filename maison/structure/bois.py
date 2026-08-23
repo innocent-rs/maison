@@ -10,7 +10,7 @@ pièce longitudinale est orientée ainsi :
 
 from dataclasses import dataclass
 
-from build123d import Align, Box, Part
+from build123d import Align, Box, Part, Pos
 
 from maison.nomenclature import ArticleBOM
 
@@ -68,4 +68,87 @@ class Madrier:
             largeur_mm=self.largeur,
             hauteur_mm=self.hauteur,
             volume_mm3=self.longueur * self.largeur * self.hauteur,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PoutreI:
+    """Poutre en I de type STEICOjoist SJ90/360.
+
+    La géométrie utilise deux membrures de 90 × 45 mm et une âme centrée de
+    8 mm. Les dimensions restent paramétrables pour de futures variantes.
+    """
+
+    longueur: float
+    hauteur: float = 360.0
+    largeur_membrure: float = 90.0
+    hauteur_membrure: float = 45.0
+    epaisseur_ame: float = 8.0
+    modele: str = "STEICOjoist SJ90/360"
+    materiau: str = "Membrures bois/LVL et âme en fibre de bois"
+
+    def __post_init__(self) -> None:
+        dimensions = (
+            self.longueur,
+            self.hauteur,
+            self.largeur_membrure,
+            self.hauteur_membrure,
+            self.epaisseur_ame,
+        )
+        if min(dimensions) <= 0:
+            raise ValueError("les dimensions de la poutre en I doivent être positives")
+        if 2 * self.hauteur_membrure >= self.hauteur:
+            raise ValueError("les membrures ne laissent aucune hauteur pour l'âme")
+        if self.epaisseur_ame > self.largeur_membrure:
+            raise ValueError("l'âme ne peut pas être plus large que les membrures")
+
+    @property
+    def hauteur_ame(self) -> float:
+        return self.hauteur - 2 * self.hauteur_membrure
+
+    def construire(self) -> Part:
+        """Construit la section en I extrudée suivant l'axe X."""
+        alignement = (Align.MIN, Align.CENTER, Align.MIN)
+        membrure_basse = Box(
+            self.longueur,
+            self.largeur_membrure,
+            self.hauteur_membrure,
+            align=alignement,
+        )
+        ame = Pos(0, 0, self.hauteur_membrure) * Box(
+            self.longueur,
+            self.epaisseur_ame,
+            self.hauteur_ame,
+            align=alignement,
+        )
+        membrure_haute = Pos(0, 0, self.hauteur - self.hauteur_membrure) * Box(
+            self.longueur,
+            self.largeur_membrure,
+            self.hauteur_membrure,
+            align=alignement,
+        )
+        return membrure_basse + ame + membrure_haute
+
+    @property
+    def designation(self) -> str:
+        return f"Poutre en I {self.modele} — L {self.longueur:g} mm"
+
+    @property
+    def volume_mm3(self) -> float:
+        section_membrures = (
+            2 * self.largeur_membrure * self.hauteur_membrure
+        )
+        section_ame = self.epaisseur_ame * self.hauteur_ame
+        return self.longueur * (section_membrures + section_ame)
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference=(f"SJI-90x360-L{self.longueur:g}").replace(".", "_"),
+            designation=self.designation,
+            categorie="Bois / poutre en I",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.largeur_membrure,
+            hauteur_mm=self.hauteur,
+            volume_mm3=self.volume_mm3,
         )
