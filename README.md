@@ -46,18 +46,48 @@ fixe les dépendances Nix.
 
 Les sorties du serveur sont conservées dans `.ocp-vscode.log`.
 
-### Simulation comparative
+### Simulation du plancher fini
 
-Le premier modèle OpenSeesPy applique une charge ponctuelle de `1 000 N` au
-centre du châssis sur quatre appuis d'angle. Il compare une borne parfaitement
-rigide avec l'idéalisation articulée retenue pour les sabots SAI :
+Le modèle OpenSeesPy représente les deux poutres de rive, les trois traverses
+et les douze segments de STEICOjoist. Les SJ60/240 utilisent directement les
+rigidités moyennes du [guide technique STEICO](https://www.steico.com/fileadmin/user_upload/importer/downloads/4028b609775e65ec0177d608769c2bda/Guide_technique_STEICOconstruction_FR_i.pdf)
+(`EI = 709 kN·m²`, `GA = 3,18 MN`) dans des éléments de poutre de Timoshenko ;
+leurs abouts dans les EWH sont articulés.
+Deux bornes restent comparées pour les liaisons SAI entre traverses et poutres
+de rive : parfaitement rigides ou articulées.
+
+Les charges sont désormais réparties par largeur tributaire. Le cas `G`
+comprend les poids propres des éléments porteurs et des couches réellement
+actives : OSB inférieur `12 mm`, Isonat `145 mm` et OSB supérieur `22 mm`.
+Le cas `Q` utilise par défaut une hypothèse modifiable de `1,5 kN/m²`, et le cas
+`G+Q` les additionne sans pondération. Cette valeur est une hypothèse de travail
+à confirmer avec la catégorie d'usage et l'annexe nationale applicables ; une
+charge permanente rapportée peut être ajoutée pour les cloisons et finitions.
 
 ```console
 just simulate
 ```
 
-Les résultats sont écrits dans `build/simulation/resultats.csv`. Ce modèle
-linéaire sert à comparer les concepts ; il ne remplace pas une note de calcul.
+Les six résultats sont écrits dans `build/simulation/resultats.csv`. Le rapport
+distingue la flèche globale, la flèche propre des poutres de rive, celle des
+traverses et celle des solives, avec un repère indicatif `L/300`, ainsi que la
+réaction maximale et l'équilibre total des quatre appuis.
+
+Avec le plancher courant, `G = 0,27836 kN/m²` pour les couches et le poids de la
+structure modélisée vaut `3,837 kN`. Sous `G+Q`, la charge totale est
+`37,981 kN`. Dans la borne articulée, les résultats sont : poutres de rive
+`13,68 / 15,59 mm`, traverses `8,47 / 12,52 mm` et SJ60/240
+`0,81 / 7,37 mm`. La flèche verticale cumulée au point le plus bas atteint
+`22,15 mm` : même si les trois contrôles relatifs restent sous le repère
+indicatif, ce déplacement global mérite d'être examiné avant de figer les
+appuis et le critère de confort.
+
+L'OSB distribue les charges mais sa rigidité de diaphragme ou son éventuel
+effet composite n'est pas crédité. Les déformations différées, vibrations,
+charges concentrées réglementaires, efforts et résistances des assemblages,
+stabilité, feu et combinaisons ELU ne sont pas encore vérifiés. Ce modèle
+linéaire reste donc un outil de conception ; il ne remplace pas une note de
+calcul établie ou validée par un ingénieur structure.
 
 ### Nomenclature et chiffrage
 
