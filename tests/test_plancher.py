@@ -6,7 +6,10 @@ from maison.structure import PlancherAFrame
 
 
 class TestPlancherAFrame(unittest.TestCase):
-    def plancher_modulaire(self) -> PlancherAFrame:
+    def plancher_modulaire(
+        self,
+        inclure_osb_plancher: bool = False,
+    ) -> PlancherAFrame:
         return PlancherAFrame(
             GeometrieAFrame(
                 largeur_interieure=7_108,
@@ -18,6 +21,7 @@ class TestPlancherAFrame(unittest.TestCase):
             inclure_solives_i=True,
             inclure_osb_caissons=True,
             inclure_isolant_caissons=True,
+            inclure_osb_plancher=inclure_osb_plancher,
         )
 
     def test_chassis_primaire(self) -> None:
@@ -233,6 +237,40 @@ class TestPlancherAFrame(unittest.TestCase):
         )
         self.assertEqual(plancher.nombre_vis_par_panneau_osb, 16)
         self.assertEqual(plancher.nombre_vis_osb, 384)
+
+    def test_plancher_osb_22_mm_sur_tous_les_appuis(self) -> None:
+        plancher = self.plancher_modulaire(inclure_osb_plancher=True)
+        panneaux = [
+            element
+            for element in plancher.elements()
+            if element.nom.startswith("Plancher OSB supérieur")
+        ]
+        largeurs = [round(element.forme.bounding_box().size.X, 6) for element in panneaux]
+        longueurs = [round(element.forme.bounding_box().size.Y, 6) for element in panneaux]
+
+        self.assertEqual(plancher.nombre_panneaux_osb_plancher, 22)
+        self.assertEqual(len(panneaux), 22)
+        self.assertEqual(largeurs.count(675), 18)
+        self.assertEqual(largeurs.count(104), 4)
+        self.assertEqual(longueurs.count(1_835), 6)
+        self.assertEqual(longueurs.count(1_719), 12)
+        self.assertEqual(longueurs.count(1_262), 2)
+        self.assertEqual(longueurs.count(689), 2)
+        self.assertEqual(plancher.nombre_dalles_brutes_osb_plancher, 17)
+        self.assertEqual(plancher.nombre_vis_osb_plancher, 483)
+        self.assertTrue(
+            all(
+                element.forme.bounding_box().min.Z == 250
+                and element.forme.bounding_box().max.Z == 272
+                for element in panneaux
+            )
+        )
+        surface = sum(
+            element.forme.bounding_box().size.X
+            * element.forme.bounding_box().size.Y
+            for element in panneaux
+        )
+        self.assertAlmostEqual(surface / 1_000_000, 19.930832)
 
     def test_encombrement(self) -> None:
         plancher = PlancherAFrame(GeometrieAFrame())

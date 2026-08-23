@@ -1,6 +1,6 @@
 import unittest
 
-from maison.structure import DalleOSB, PanneauFondCaissonOSB
+from maison.structure import DalleOSB, PanneauFondCaissonOSB, PanneauPlancherOSB
 
 
 class TestDalleOSB(unittest.TestCase):
@@ -50,6 +50,20 @@ class TestDalleOSB(unittest.TestCase):
         self.assertAlmostEqual(panneau.construire().volume, 423 * 1_479 * 12)
         self.assertEqual(panneau.volume_mm3, 423 * 1_479 * 12)
         self.assertTrue(panneau.article_bom().reference.endswith("-RECT"))
+
+    def test_panneau_plancher_osb_22_mm(self) -> None:
+        panneau = PanneauPlancherOSB(
+            epaisseur=22,
+            largeur=675,
+            longueur=1_835,
+        )
+        taille = panneau.construire().bounding_box().size
+
+        self.assertEqual((taille.X, taille.Y, taille.Z), (1_835, 675, 22))
+        self.assertEqual(
+            panneau.article_bom().reference,
+            "OSB-PLANCHER-675x1835x22",
+        )
 
 
 if __name__ == "__main__":

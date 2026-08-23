@@ -9,9 +9,10 @@ from .connecteurs import (
     SabotSAI500_120_2,
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
+    VisPlancherOSB5x60,
 )
 from .isolation import PanneauSTEICOflex036
-from .panneaux import DalleOSB, PanneauFondCaissonOSB
+from .panneaux import DalleOSB, PanneauFondCaissonOSB, PanneauPlancherOSB
 from .plancher import ElementPlancher, PlancherAFrame
 
 __all__ = [
@@ -24,10 +25,12 @@ __all__ = [
     "PointeAncrageCNA4x35",
     "PoutreI",
     "PanneauFondCaissonOSB",
+    "PanneauPlancherOSB",
     "PanneauSTEICOflex036",
     "SabotEWH219_91",
     "SabotSAI500_120_2",
     "Tasseau",
     "VisBoisOSB4x35",
     "VisConnecteurCSA5x40",
+    "VisPlancherOSB5x60",
 ]

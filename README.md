@@ -174,6 +174,22 @@ sans découpe. Les vingt-quatre panneaux figurent dans la BOM. Les petits
 recouvrements avec les tôles de `0,9 mm` des EWH représentent la déformation
 locale de l'isolant souple autour des étriers, pas une découpe.
 
+Le plancher porteur supérieur est fermé par de l'OSB 3 rainuré-languetté de
+`22 mm`. Son grand axe est perpendiculaire aux poutres en I et les joints courts
+sont alternés selon deux motifs ; ils tombent tous sur une membrure ou sur une
+poutre longitudinale. Le calepinage comprend quatre bandes entières de `675 mm`
+et une bande de rive de `104 mm`, soit vingt-deux découpes issues de dix-sept
+dalles brutes `675 × 2500 mm`. Le niveau fini provisoire du panneau est
+`Z = 272 mm`.
+
+La fixation supérieure utilise `483` vis à filetage complet `5 × 60 mm` :
+entraxe maximal `150 mm` aux rives des panneaux et `300 mm` sur les appuis
+intermédiaires. Le plan de fixation couvre les deux poutres longitudinales, les
+onze lignes de poutres en I et les trois traverses primaires. Les joints R+L
+devront également être collés selon les prescriptions du fabricant du panneau.
+La longueur de `60 mm` respecte la recommandation minimale de `2,5` fois
+l'épaisseur du panneau pour un OSB de plancher de `22 mm`.
+
 La géométrie CAO des sabots représente leur enveloppe utile — assise, joues et
 ailes intérieures — sans reproduire leurs trous. Pour l'exécution, le placement
 des fixations doit impérativement suivre le plan certifié Simpson de la

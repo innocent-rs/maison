@@ -83,6 +83,7 @@ class TestNomenclature(unittest.TestCase):
             inclure_solives_i=True,
             inclure_osb_caissons=True,
             inclure_isolant_caissons=True,
+            inclure_osb_plancher=True,
         )
         lignes = {
             ligne.article.reference: ligne for ligne in plancher.nomenclature().lignes
@@ -99,6 +100,13 @@ class TestNomenclature(unittest.TestCase):
             if reference.startswith("OSB-FOND-562x1214x12")
         ]
         self.assertEqual(sum(ligne.quantite for ligne in lignes_osb), 24)
+        lignes_osb_plancher = [
+            ligne
+            for reference, ligne in lignes.items()
+            if reference.startswith("OSB-PLANCHER-")
+        ]
+        self.assertEqual(sum(ligne.quantite for ligne in lignes_osb_plancher), 22)
+        self.assertEqual(lignes["VIS-PLANCHER-OSB-5X60"].quantite, 483)
 
 
 if __name__ == "__main__":

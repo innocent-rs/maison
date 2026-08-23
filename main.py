@@ -20,6 +20,7 @@ def make_part():
         inclure_solives_i=True,
         inclure_osb_caissons=True,
         inclure_isolant_caissons=True,
+        inclure_osb_plancher=True,
     )
 
 
@@ -73,6 +74,13 @@ if __name__ == "__main__":
         print(
             f"Isolation : {plancher.nombre_panneaux_isolant} × STEICOflex 036 "
             "120 × 575 × 1220 mm, sans découpe"
+        )
+    if plancher.inclure_osb_plancher:
+        print(
+            f"Plancher supérieur : {plancher.nombre_panneaux_osb_plancher} "
+            f"découpes OSB {plancher.epaisseur_osb_plancher:g} mm, "
+            f"{plancher.nombre_dalles_brutes_osb_plancher} dalles brutes, "
+            f"{plancher.nombre_vis_osb_plancher} × vis 5X60"
         )
 
     show(

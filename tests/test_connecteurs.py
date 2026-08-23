@@ -8,6 +8,7 @@ from maison.structure import (
     SabotSAI500_120_2,
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
+    VisPlancherOSB5x60,
 )
 
 
@@ -69,6 +70,12 @@ class TestConnecteurs(unittest.TestCase):
 
         self.assertEqual(vis.article_bom().reference, "VIS-BOIS-OSB-4X35")
         self.assertEqual(vis.article_bom().longueur_mm, 35)
+
+    def test_vis_plancher_osb_5x60(self) -> None:
+        vis = VisPlancherOSB5x60()
+
+        self.assertEqual(vis.article_bom().reference, "VIS-PLANCHER-OSB-5X60")
+        self.assertEqual(vis.article_bom().longueur_mm, 60)
 
 
 if __name__ == "__main__":

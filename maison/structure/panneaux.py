@@ -144,3 +144,51 @@ class PanneauFondCaissonOSB:
             hauteur_mm=self.epaisseur,
             volume_mm3=self.volume_mm3,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class PanneauPlancherOSB:
+    """Découpe rectangulaire d'OSB rainuré-languetté pour le plancher porteur."""
+
+    epaisseur: float
+    largeur: float
+    longueur: float
+    materiau: str = "Panneau structurel OSB 3 rainuré-languetté"
+
+    def __post_init__(self) -> None:
+        if self.epaisseur not in DalleOSB.EPAISSEURS_DISPONIBLES:
+            raise ValueError("épaisseur OSB indisponible")
+        if min(self.largeur, self.longueur) <= 0:
+            raise ValueError("les dimensions du panneau doivent être positives")
+
+    def construire(self) -> Part:
+        """Représente l'enveloppe rectangulaire, sans détailler le profil R+L."""
+        return Box(
+            self.longueur,
+            self.largeur,
+            self.epaisseur,
+            align=(Align.MIN, Align.CENTER, Align.MIN),
+        )
+
+    @property
+    def volume_mm3(self) -> float:
+        return self.longueur * self.largeur * self.epaisseur
+
+    def article_bom(self) -> ArticleBOM:
+        reference = (
+            f"OSB-PLANCHER-{self.largeur:g}x{self.longueur:g}x"
+            f"{self.epaisseur:g}"
+        ).replace(".", "_")
+        return ArticleBOM(
+            reference=reference,
+            designation=(
+                f"Plancher OSB 3 R+L {self.largeur:g} × {self.longueur:g}"
+                f" × {self.epaisseur:g} mm"
+            ),
+            categorie="Panneaux / plancher OSB",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.largeur,
+            hauteur_mm=self.epaisseur,
+            volume_mm3=self.volume_mm3,
+        )

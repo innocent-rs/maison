@@ -340,3 +340,26 @@ class VisBoisOSB4x35:
             longueur_mm=self.longueur,
             largeur_mm=self.diametre,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class VisPlancherOSB5x60:
+    """Vis bois à filetage complet pour le plancher porteur en OSB de 22 mm."""
+
+    diametre: float = 5.0
+    longueur: float = 60.0
+    materiau: str = "Acier zingué"
+
+    def __post_init__(self) -> None:
+        if min(self.diametre, self.longueur) <= 0:
+            raise ValueError("les dimensions de la vis doivent être positives")
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference="VIS-PLANCHER-OSB-5X60",
+            designation="Vis bois pour plancher OSB 5 × 60 mm",
+            categorie="Fixation / vis plancher",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.diametre,
+        )

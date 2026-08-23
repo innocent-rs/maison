@@ -16,9 +16,10 @@ from maison.structure.connecteurs import (
     SabotSAI500_120_2,
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
+    VisPlancherOSB5x60,
 )
 from maison.structure.isolation import PanneauSTEICOflex036
-from maison.structure.panneaux import PanneauFondCaissonOSB
+from maison.structure.panneaux import PanneauFondCaissonOSB, PanneauPlancherOSB
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,10 +59,17 @@ class PlancherAFrame:
     jeu_about_solives_i: float = 3.0
     inclure_osb_caissons: bool = False
     inclure_isolant_caissons: bool = False
+    inclure_osb_plancher: bool = False
     epaisseur_osb_caissons: float = 12.0
+    epaisseur_osb_plancher: float = 22.0
     jeu_joint_osb: float = 3.0
     entraxe_vis_osb: float = 150.0
     retrait_extremite_vis_osb: float = 100.0
+    largeur_dalle_osb_plancher: float = 675.0
+    longueur_dalle_osb_plancher: float = 2_500.0
+    entraxe_vis_bord_osb_plancher: float = 150.0
+    entraxe_vis_appui_osb_plancher: float = 300.0
+    retrait_coin_vis_osb_plancher: float = 25.0
 
     def __post_init__(self) -> None:
         if min(
@@ -70,8 +78,14 @@ class PlancherAFrame:
             self.entraxe_solives_i_max,
             self.hauteur_solives_i,
             self.epaisseur_osb_caissons,
+            self.epaisseur_osb_plancher,
             self.entraxe_vis_osb,
             self.retrait_extremite_vis_osb,
+            self.largeur_dalle_osb_plancher,
+            self.longueur_dalle_osb_plancher,
+            self.entraxe_vis_bord_osb_plancher,
+            self.entraxe_vis_appui_osb_plancher,
+            self.retrait_coin_vis_osb_plancher,
         ) <= 0:
             raise ValueError("les sections doivent être strictement positives")
         if self.nombre_traverses < 2:
@@ -88,6 +102,10 @@ class PlancherAFrame:
             raise ValueError("les fonds de caisson exigent les solives en I")
         if self.inclure_isolant_caissons and not self.inclure_osb_caissons:
             raise ValueError("l'isolant exige les fonds de caisson OSB")
+        if self.inclure_osb_plancher and not self.inclure_solives_i:
+            raise ValueError("le plancher OSB exige les solives en I")
+        if self.inclure_osb_plancher and not self.trame_isolant_sans_decoupe:
+            raise ValueError("le calepinage OSB supérieur exige la trame modulaire")
         if self.inclure_isolant_caissons and not self.trame_isolant_sans_decoupe:
             raise ValueError("l'isolant entier exige la trame sans découpe")
         if self.trame_isolant_sans_decoupe:
@@ -106,6 +124,10 @@ class PlancherAFrame:
                 )
             if not 0 < self.hauteur_caisson_isolant <= panneau_isolant.epaisseur:
                 raise ValueError("la hauteur des caissons est incompatible avec l'isolant")
+        if self.inclure_osb_plancher:
+            if self.epaisseur_osb_plancher != 22:
+                raise ValueError("le plancher courant est défini en OSB de 22 mm")
+            _ = self.decoupes_osb_plancher()
         if self.inclure_solives_i and self.inclure_connecteurs_solives_i:
             etrier = SabotEWH219_91()
             if self.hauteur_solives_i != 220:
@@ -384,6 +406,103 @@ class PlancherAFrame:
             face_interieure_droite - self.largeur_caisson_isolant / 2,
         )
 
+    def bandes_x_osb_plancher(self) -> tuple[tuple[float, float], ...]:
+        """Bandes suivant X; les joints longitudinaux conservent le profil R+L."""
+        longueur = self.geometrie.longueur_interieure
+        largeur_brute = self.largeur_dalle_osb_plancher
+        nombre_bandes_entieres = int(longueur // largeur_brute)
+        limites = tuple(
+            index * largeur_brute for index in range(nombre_bandes_entieres + 1)
+        ) + (longueur,)
+        if any(droite <= gauche for gauche, droite in pairwise(limites)):
+            raise ValueError("la longueur ne permet pas le calepinage OSB supérieur")
+        if any(
+            droite - gauche > largeur_brute + 1e-6
+            for gauche, droite in pairwise(limites)
+        ):
+            raise ValueError("une bande OSB dépasse la largeur de dalle brute")
+        return tuple(pairwise(limites))
+
+    def limites_y_osb_plancher(self, motif: str) -> tuple[float, ...]:
+        """Joints courts alternés, tous placés sur une poutre en I."""
+        axes = self.axes_solives_i()
+        if len(axes) != 11:
+            raise ValueError("le calepinage OSB est défini pour onze lignes de solives")
+        bord_gauche = -self.geometrie.largeur_interieure / 2
+        bord_droit = self.geometrie.largeur_interieure / 2
+        if motif == "A":
+            return (bord_gauche, axes[2], axes[5], axes[8], bord_droit)
+        if motif == "B":
+            return (
+                bord_gauche,
+                axes[0],
+                axes[3],
+                axes[6],
+                axes[9],
+                bord_droit,
+            )
+        raise ValueError("motif de calepinage OSB inconnu")
+
+    def decoupes_osb_plancher(self) -> tuple[tuple[float, float, float, float], ...]:
+        """Découpes ``(x, y, largeur_X, longueur_Y)`` du plancher supérieur."""
+        decoupes: list[tuple[float, float, float, float]] = []
+        for index, (x_gauche, x_droit) in enumerate(
+            self.bandes_x_osb_plancher()
+        ):
+            motif = "A" if index % 2 == 0 else "B"
+            for y_bas, y_haut in pairwise(self.limites_y_osb_plancher(motif)):
+                longueur = y_haut - y_bas
+                if longueur > self.longueur_dalle_osb_plancher + 1e-6:
+                    raise ValueError("une découpe dépasse la longueur de dalle brute")
+                decoupes.append((x_gauche, y_bas, x_droit - x_gauche, longueur))
+        return tuple(decoupes)
+
+    @property
+    def nombre_panneaux_osb_plancher(self) -> int:
+        if not self.inclure_osb_plancher:
+            return 0
+        return len(self.decoupes_osb_plancher())
+
+    @property
+    def nombre_dalles_brutes_osb_plancher(self) -> int:
+        """Débit optimisé actuel : 16 dalles pleines et une pour la rive."""
+        return 17 if self.inclure_osb_plancher else 0
+
+    def _nombre_fixations_sur_ligne(self, longueur: float, entraxe: float) -> int:
+        longueur_utile = longueur - 2 * self.retrait_coin_vis_osb_plancher
+        if longueur_utile <= 0:
+            return 1
+        return ceil(longueur_utile / entraxe) + 1
+
+    @property
+    def nombre_vis_osb_plancher(self) -> int:
+        """Budget de vis aux rives, sur chaque solive et sur les traverses."""
+        if not self.inclure_osb_plancher:
+            return 0
+        axes_solives = self.axes_solives_i()
+        axes_traverses = self.axes_traverses()
+        demi_traverse = self.section_largeur / 2
+        total = 0
+        for x, y, largeur_x, longueur_y in self.decoupes_osb_plancher():
+            total += 2 * self._nombre_fixations_sur_ligne(
+                largeur_x, self.entraxe_vis_bord_osb_plancher
+            )
+            appuis_intermediaires = sum(
+                y < axe < y + longueur_y for axe in axes_solives
+            )
+            total += appuis_intermediaires * self._nombre_fixations_sur_ligne(
+                largeur_x, self.entraxe_vis_appui_osb_plancher
+            )
+            for axe in axes_traverses:
+                recouvrement = min(x + largeur_x, axe + demi_traverse) - max(
+                    x, axe - demi_traverse
+                )
+                if recouvrement >= 2 * 9:
+                    total += self._nombre_fixations_sur_ligne(
+                        longueur_y, self.entraxe_vis_appui_osb_plancher
+                    )
+        return total
+
     def elements(self) -> list[ElementPlancher]:
         largeur = self.geometrie.largeur_interieure
         longueur = self.geometrie.longueur_interieure
@@ -631,6 +750,31 @@ class PlancherAFrame:
                                 )
                             )
 
+            if self.inclure_osb_plancher:
+                for index, (x, y, largeur_x, longueur_y) in enumerate(
+                    self.decoupes_osb_plancher(), start=1
+                ):
+                    panneau_plancher_piece = PanneauPlancherOSB(
+                        epaisseur=self.epaisseur_osb_plancher,
+                        largeur=largeur_x,
+                        longueur=longueur_y,
+                    )
+                    panneau_plancher = panneau_plancher_piece.construire()
+                    elements.append(
+                        ElementPlancher(
+                            f"Plancher OSB supérieur {index:02d}",
+                            panneau_plancher_piece,
+                            Pos(
+                                x + largeur_x / 2,
+                                y,
+                                self.niveau_haut_traverses,
+                            )
+                            * Rot(0, 0, 90)
+                            * panneau_plancher,
+                            "darkorange",
+                        )
+                    )
+
         return elements
 
     def nomenclature(self):
@@ -647,4 +791,9 @@ class PlancherAFrame:
         if self.nombre_vis_osb:
             vis_osb = VisBoisOSB4x35()
             pieces.append(LotBOM(vis_osb.article_bom(), self.nombre_vis_osb))
+        if self.nombre_vis_osb_plancher:
+            vis_plancher = VisPlancherOSB5x60()
+            pieces.append(
+                LotBOM(vis_plancher.article_bom(), self.nombre_vis_osb_plancher)
+            )
         return Nomenclature(pieces)
