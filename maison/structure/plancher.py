@@ -23,6 +23,7 @@ from maison.structure.panneaux import (
     DalleOSB,
     PanneauFondCaissonOSB,
     PanneauPlancherOSB,
+    TypeBordsOSB,
 )
 
 
@@ -72,6 +73,8 @@ class PlancherAFrame:
     jeu_joint_osb: float = 3.0
     entraxe_vis_osb: float = 150.0
     retrait_extremite_vis_osb: float = 100.0
+    largeur_dalle_osb_caissons: float = 1_196.0
+    longueur_dalle_osb_caissons: float = 2_800.0
     largeur_dalle_osb_plancher: float = 675.0
     longueur_dalle_osb_plancher: float = 2_500.0
     entraxe_vis_bord_osb_plancher: float = 150.0
@@ -93,6 +96,8 @@ class PlancherAFrame:
             self.epaisseur_osb_plancher,
             self.entraxe_vis_osb,
             self.retrait_extremite_vis_osb,
+            self.largeur_dalle_osb_caissons,
+            self.longueur_dalle_osb_caissons,
             self.largeur_dalle_osb_plancher,
             self.longueur_dalle_osb_plancher,
             self.entraxe_vis_bord_osb_plancher,
@@ -369,12 +374,13 @@ class PlancherAFrame:
     def nombre_panneaux_osb_caissons(self) -> int:
         return self.nombre_panneaux_osb_interieurs + self.nombre_panneaux_osb_rive
 
-    def _rendement_dalle_osb(self, largeur_decoupe: float) -> int:
+    def rendement_dalle_osb_caissons(self, largeur_decoupe: float) -> int:
+        """Nombre de fonds rectangulaires débitables dans un panneau brut."""
         rendement = max(
-            int(self.largeur_dalle_osb_plancher // largeur_decoupe)
-            * int(self.longueur_dalle_osb_plancher // self.longueur_solives_i),
-            int(self.largeur_dalle_osb_plancher // self.longueur_solives_i)
-            * int(self.longueur_dalle_osb_plancher // largeur_decoupe),
+            int(self.largeur_dalle_osb_caissons // largeur_decoupe)
+            * int(self.longueur_dalle_osb_caissons // self.longueur_solives_i),
+            int(self.largeur_dalle_osb_caissons // self.longueur_solives_i)
+            * int(self.longueur_dalle_osb_caissons // largeur_decoupe),
         )
         if rendement < 1:
             raise ValueError("une découpe de fond de caisson dépasse la dalle OSB")
@@ -387,11 +393,13 @@ class PlancherAFrame:
             return 0
         interieur = ceil(
             self.nombre_panneaux_osb_interieurs
-            / self._rendement_dalle_osb(self.largeur_panneaux_osb_caissons)
+            / self.rendement_dalle_osb_caissons(
+                self.largeur_panneaux_osb_caissons
+            )
         )
         rive = ceil(
             self.nombre_panneaux_osb_rive
-            / self._rendement_dalle_osb(self.largeur_panneaux_osb_rive)
+            / self.rendement_dalle_osb_caissons(self.largeur_panneaux_osb_rive)
         )
         return interieur + rive
 
@@ -985,7 +993,12 @@ class PlancherAFrame:
             )
         ]
         if self.nombre_dalles_brutes_osb_caissons:
-            dalle_caissons = DalleOSB(epaisseur=self.epaisseur_osb_caissons)
+            dalle_caissons = DalleOSB(
+                epaisseur=self.epaisseur_osb_caissons,
+                largeur=self.largeur_dalle_osb_caissons,
+                longueur=self.longueur_dalle_osb_caissons,
+                type_bords=TypeBordsOSB.BORDS_DROITS,
+            )
             pieces.append(
                 LotBOM(
                     dalle_caissons.article_bom(),
@@ -993,7 +1006,12 @@ class PlancherAFrame:
                 )
             )
         if self.nombre_dalles_brutes_osb_plancher:
-            dalle_plancher = DalleOSB(epaisseur=self.epaisseur_osb_plancher)
+            dalle_plancher = DalleOSB(
+                epaisseur=self.epaisseur_osb_plancher,
+                largeur=self.largeur_dalle_osb_plancher,
+                longueur=self.longueur_dalle_osb_plancher,
+                type_bords=TypeBordsOSB.RAINURE_LANGUETTE,
+            )
             pieces.append(
                 LotBOM(
                     dalle_plancher.article_bom(),

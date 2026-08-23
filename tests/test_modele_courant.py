@@ -16,7 +16,7 @@ class TestModeleCourant(unittest.TestCase):
     def test_configuration_active_contient_poutres_et_solives_i(self) -> None:
         elements = self.maison.elements()
 
-        self.assertEqual(len(elements), 47)
+        self.assertEqual(len(elements), 65)
         self.assertEqual(
             [element.nom for element in elements[:5]],
             [
@@ -40,10 +40,14 @@ class TestModeleCourant(unittest.TestCase):
         self.assertEqual(self.plancher.nombre_sabots_ewh, 24)
         self.assertEqual(self.plancher.nombre_pointes_ewh, 384)
 
-    def test_tous_les_autres_sous_ensembles_sont_desactives(self) -> None:
+    def test_fonds_de_caisson_actifs_et_autres_sous_ensembles_desactives(self) -> None:
         self.assertTrue(self.plancher.inclure_connecteurs)
         self.assertTrue(self.plancher.inclure_solives_i)
-        self.assertFalse(self.plancher.inclure_osb_caissons)
+        self.assertTrue(self.plancher.inclure_osb_caissons)
+        self.assertEqual(self.plancher.nombre_panneaux_osb_caissons, 14)
+        self.assertEqual(self.plancher.nombre_dalles_brutes_osb_caissons, 7)
+        self.assertEqual(self.plancher.nombre_tasseaux_rive, 4)
+        self.assertEqual(self.plancher.nombre_vis_osb, 420)
         self.assertFalse(self.plancher.inclure_isolant_caissons)
         self.assertFalse(self.plancher.inclure_osb_plancher)
         self.assertFalse(self.maison.inclure_charpente)
@@ -60,14 +64,18 @@ class TestModeleCourant(unittest.TestCase):
             {
                 "MAD-120x240-L3756": 3,
                 "MAD-120x240-L4800": 2,
+                "OSB-FOND-BD-527_286x2212x12": 10,
+                "OSB-FOND-BD-527_286x2212x12-RECT": 4,
                 "SIMPSON-CNA4.0X35": 384,
                 "SIMPSON-CSA5.0X40": 300,
                 "SIMPSON-EWH240-61": 24,
                 "SIMPSON-SAI500-120-2": 6,
                 "SJI-60x240-L2212": 12,
+                "TAS-60x45-L2212": 4,
+                "VIS-BOIS-OSB-4X35": 420,
             },
         )
-        self.assertEqual(self.maison.nomenclature().nombre_pieces, 731)
+        self.assertEqual(self.maison.nomenclature().nombre_pieces, 1_169)
 
 
 if __name__ == "__main__":

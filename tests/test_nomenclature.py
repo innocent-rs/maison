@@ -97,7 +97,7 @@ class TestNomenclature(unittest.TestCase):
         lignes_osb = [
             ligne
             for reference, ligne in lignes.items()
-            if reference.startswith("OSB-FOND-562x1214x12")
+            if reference.startswith("OSB-FOND-BD-562x1214x12")
         ]
         self.assertEqual(sum(ligne.quantite for ligne in lignes_osb), 24)
         lignes_osb_plancher = [

@@ -2,12 +2,14 @@ import io
 import unittest
 from decimal import Decimal
 
+from chiffrer import lignes_recapitulatif_achats
 from main import make_part
 from maison.chiffrage import Chiffrage, Tarif
 from maison.geometrie import GeometrieAFrame
 from maison.nomenclature import ArticleBOM, LotBOM, Nomenclature
 from maison.prix import TARIFS
 from maison.structure import PlancherAFrame
+from optimiser import lignes_resume_panneaux_osb
 
 
 class TestChiffrage(unittest.TestCase):
@@ -111,8 +113,8 @@ class TestChiffrage(unittest.TestCase):
             for ligne in plancher.nomenclature_achats().lignes
         }
 
-        self.assertEqual(quantites["OSB-675x2500x12"], 14)
-        self.assertEqual(quantites["OSB-675x2500x22"], 15)
+        self.assertEqual(quantites["OSB-BD-1196x2800x12"], 6)
+        self.assertEqual(quantites["OSB-RL-675x2500x22"], 15)
         self.assertFalse(
             any(reference.startswith("OSB-FOND-") for reference in quantites)
         )
@@ -120,7 +122,7 @@ class TestChiffrage(unittest.TestCase):
             any(reference.startswith("OSB-PLANCHER-") for reference in quantites)
         )
 
-    def test_configuration_active_ne_chiffre_que_le_plancher_primaire(self) -> None:
+    def test_configuration_active_chiffre_aussi_les_fonds_de_caisson(self) -> None:
         maison = make_part()
         references_plancher = {
             ligne.article.reference
@@ -136,11 +138,14 @@ class TestChiffrage(unittest.TestCase):
             {
                 "MAD-120x240-L3756",
                 "MAD-120x240-L4800",
+                "OSB-BD-1196x2800x12",
                 "SIMPSON-CNA4.0X35",
                 "SIMPSON-CSA5.0X40",
                 "SIMPSON-EWH240-61",
                 "SIMPSON-SAI500-120-2",
                 "SJI-60x240-L2212",
+                "TAS-60x45-L2212",
+                "VIS-BOIS-OSB-4X35",
             },
         )
         self.assertEqual(references_charpente, set())
@@ -174,8 +179,31 @@ class TestChiffrage(unittest.TestCase):
         self.assertEqual(plan.cout_ttc_eur, Decimal("1386.46"))
         self.assertEqual(
             chiffrage.sous_total_renseigne_ttc_eur,
-            Decimal("2256.98"),
+            Decimal("2454.10"),
         )
+
+    def test_fonds_de_caisson_achetent_sept_panneaux_bd_entiers(self) -> None:
+        chiffrage = Chiffrage(
+            "plancher",
+            make_part().nomenclature_plancher(),
+            TARIFS,
+        )
+        ligne = next(
+            ligne
+            for ligne in chiffrage.lignes
+            if ligne.ligne_bom.article.reference == "OSB-BD-1196x2800x12"
+        )
+
+        self.assertEqual(ligne.ligne_bom.quantite, 7)
+        self.assertEqual(ligne.nombre_conditionnements, 7)
+        self.assertEqual(ligne.cout_ttc_eur, Decimal("197.12"))
+
+    def test_optimiseur_resume_le_debit_des_panneaux_bd_actifs(self) -> None:
+        contenu = "\n".join(lignes_resume_panneaux_osb(make_part().plancher))
+
+        self.assertIn("7 panneau(x) × 2800 × 1196 mm", contenu)
+        self.assertIn("14 fonds × 2212", contenu)
+        self.assertIn("2 découpes par panneau", contenu)
 
     def test_fixations_simpson_sont_arrondies_aux_conditionnements(self) -> None:
         chiffrage = Chiffrage(
@@ -221,6 +249,27 @@ class TestChiffrage(unittest.TestCase):
         self.assertEqual(lignes["SIMPSON-CNA4.0X35"].ligne_bom.quantite, 384)
         self.assertEqual(lignes["SIMPSON-CNA4.0X35"].nombre_conditionnements, 2)
         self.assertEqual(lignes["SIMPSON-CNA4.0X35"].cout_ttc_eur, Decimal("23.76"))
+
+    def test_recapitulatif_terminal_affiche_tous_les_achats(self) -> None:
+        chiffrage = Chiffrage(
+            "plancher",
+            make_part().nomenclature_plancher(),
+            TARIFS,
+        )
+
+        contenu = "\n".join(lignes_recapitulatif_achats(chiffrage))
+
+        for reference in (
+            "DOUGLAS-GT24-120x240-L13500",
+            "STEICO-SJ60x240-L13000",
+            "SIMPSON-CNA4.0X35",
+            "SIMPSON-CSA5.0X40",
+            "SIMPSON-EWH240-61",
+            "SIMPSON-SAI500-120-2",
+        ):
+            self.assertIn(reference, contenu)
+        self.assertIn("384 nécessaires", contenu)
+        self.assertIn("300 nécessaires", contenu)
 
     def test_lot_desactive_est_signale_comme_vide(self) -> None:
         chiffrage = Chiffrage("charpente", Nomenclature(), {})

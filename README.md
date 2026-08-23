@@ -180,8 +180,9 @@ forme = madrier.construire()
 La convention d'axes est `X = longueur`, `Y = largeur`, `Z = hauteur`. L'origine
 du madrier est placée sous sa face de départ et au milieu de sa largeur.
 
-Les dalles OSB de `675 × 2500 mm` sont disponibles en `12`, `15`, `18` et
-`22 mm` :
+Les panneaux OSB portent explicitement leur type de bords dans la BOM : `BD`
+pour les bords droits et `RL` pour les panneaux rainurés-languettés. Par
+défaut, la dalle paramétrique de `675 × 2500 mm` est une dalle RL :
 
 ```python
 from maison.structure import DalleOSB
@@ -190,8 +191,10 @@ dalle = DalleOSB(epaisseur=22)
 forme = dalle.construire()
 ```
 
-Chaque épaisseur possède une référence BOM distincte, par exemple
-`OSB-675x2500x22`.
+Chaque format, épaisseur et type de bords possède une référence BOM distincte,
+par exemple `OSB-RL-675x2500x22`. Les fonds de caisson utilisent le produit
+commercial OSB 3 BD de `12 × 2800 × 1196 mm`, référencé
+`OSB-BD-1196x2800x12`.
 
 ### Base actuelle du A-frame
 
@@ -214,20 +217,22 @@ de `2 212 mm`, espacés de `538,286 mm`. Chaque segment reçoit deux EWH240/61,
 soit vingt-quatre étriers et `384` pointes CNA4.0X35. Leur débit nécessite trois
 poutres commerciales entières de `13 m`.
 
-La BOM active contient sept références : les cinq poutres primaires, douze
-segments de poutre en I, six SAI, `300` CSA, vingt-quatre EWH et `384` CNA. Les
-panneaux, l'isolant et les éléments de charpente restent désactivés.
+Les quatorze fonds de caisson actifs sont en OSB 3 BD de `12 mm` et mesurent
+`527,286 × 2212 mm` avec un jeu latéral total de `3 mm`. Dix panneaux
+intérieurs sont encochés autour des EWH et quatre panneaux de rive restent
+rectangulaires. Quatre tasseaux de rive `60 × 45 × 2212 mm` complètent leurs
+appuis. La fixation utilise `420` vis `4 × 35 mm`.
+
+Deux découpes entrent dans chaque panneau commercial BD de
+`12 × 2800 × 1196 mm` : le chiffrage achète donc sept panneaux entiers. La BOM
+d'achat active contient dix références : bois primaire, poutres en I,
+connecteurs Simpson, tasseaux, OSB BD et visserie. L'isolant, le plancher OSB
+supérieur et les éléments de charpente restent désactivés.
 
 ### Configuration complète conservée mais désactivée
 
 Les composants suivants restent paramétriques et testés dans le dépôt, mais ne
 sont plus instanciés par `main.make_part()` et ne participent pas au chiffrage.
-
-Les sept caissons de chaque travée donnent vingt-huit fonds d'OSB 3 de `12 mm`,
-mesurant `527,286 × 1043 mm` avec un jeu latéral total de `3 mm`. Vingt panneaux
-intérieurs sont encochés autour des EWH et huit panneaux de rive restent
-rectangulaires. Huit tasseaux de rive `60 × 45 × 1043 mm` complètent leurs
-appuis. La fixation utilise `392` vis `4 × 35 mm`.
 
 L'isolation emploie vingt-huit panneaux bruts STEICOflex 036
 `145 × 575 × 1220 mm`, recoupés à environ `138 × 530,286 × 1049 mm` pour la

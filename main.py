@@ -36,7 +36,7 @@ def make_part():
         caissons_uniformes=True,
         inclure_connecteurs=True,
         inclure_solives_i=True,
-        inclure_osb_caissons=False,
+        inclure_osb_caissons=True,
         inclure_isolant_caissons=False,
         inclure_osb_plancher=False,
     )
@@ -86,8 +86,11 @@ if __name__ == "__main__":
         print("Solives en I : désactivées")
     if plancher.inclure_osb_caissons:
         print(
-            f"Fonds de caisson : {plancher.nombre_panneaux_osb_caissons} × OSB "
+            f"Fonds de caisson : {plancher.nombre_panneaux_osb_caissons} × OSB 3 BD "
             f"{plancher.epaisseur_osb_caissons:g} mm, "
+            f"{plancher.nombre_dalles_brutes_osb_caissons} panneaux bruts "
+            f"{plancher.longueur_dalle_osb_caissons:g} × "
+            f"{plancher.largeur_dalle_osb_caissons:g} mm, "
             f"{plancher.nombre_vis_osb} × vis 4X35"
         )
         print(

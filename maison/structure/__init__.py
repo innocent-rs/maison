@@ -15,7 +15,12 @@ from .connecteurs import (
     VisPlancherOSB5x60,
 )
 from .isolation import PanneauSTEICOflex036
-from .panneaux import DalleOSB, PanneauFondCaissonOSB, PanneauPlancherOSB
+from .panneaux import (
+    DalleOSB,
+    PanneauFondCaissonOSB,
+    PanneauPlancherOSB,
+    TypeBordsOSB,
+)
 from .plancher import ElementPlancher, PlancherAFrame
 
 __all__ = [
@@ -38,6 +43,7 @@ __all__ = [
     "SabotEWH",
     "SabotSAI500_120_2",
     "Tasseau",
+    "TypeBordsOSB",
     "VisBoisOSB4x35",
     "VisConnecteurCSA5x40",
     "VisPlancherOSB5x60",

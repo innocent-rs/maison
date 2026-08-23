@@ -59,8 +59,30 @@ TARIFS: dict[str, Tarif] = {
     ),
     "MAD-120x240-L3756": TARIF_DOUGLAS_CONTRECOLLE_120X240,
     "MAD-120x240-L4800": TARIF_DOUGLAS_CONTRECOLLE_120X240,
-    "OSB-675x2500x12": Tarif(note="Dalle brute pour les fonds de caisson"),
-    "OSB-675x2500x22": Tarif(note="Dalle brute R+L pour le plancher supérieur"),
+    "OSB-BD-1196x2800x12": Tarif.par_conditionnement(
+        "28.16",
+        quantite=1,
+        conditionnement="panneau",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-23",
+        url=(
+            "https://www.materiaux-naturels.fr/produit-decl/6572-"
+            "panneau-osb-3-sans-formaldehyde-ajoute-12mm-bd-2800x1196mm"
+        ),
+        note="Panneau entier ; 3,3488 m² à 8,41 € TTC/m², arrondi au centime",
+    ),
+    "OSB-RL-675x2500x22": Tarif.par_conditionnement(
+        "27.51",
+        quantite=1,
+        conditionnement="panneau",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-23",
+        url=(
+            "https://www.materiaux-naturels.fr/produit-decl/4930-"
+            "panneau-osb-3-sans-formaldehyde-ajoute-22mm-rl-2500x675mm"
+        ),
+        note="Panneau entier rainuré-languetté pour le plancher supérieur",
+    ),
     "SIMPSON-CNA4.0X35": Tarif.par_conditionnement(
         "11.88",
         quantite=250,

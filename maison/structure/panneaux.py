@@ -1,6 +1,7 @@
 """Panneaux structurels utilisables dans la maison."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import ClassVar
 
 from build123d import Align, Box, Part, Pos
@@ -8,9 +9,16 @@ from build123d import Align, Box, Part, Pos
 from maison.nomenclature import ArticleBOM
 
 
+class TypeBordsOSB(StrEnum):
+    """Profil périphérique d'un panneau OSB acheté."""
+
+    BORDS_DROITS = "BD"
+    RAINURE_LANGUETTE = "RL"
+
+
 @dataclass(frozen=True, slots=True)
 class DalleOSB:
-    """Dalle OSB de 675 × 2500 mm, disponible en quatre épaisseurs.
+    """Panneau OSB brut, avec son format et son type de bords commerciaux.
 
     Par convention, la longueur est orientée sur X, la largeur sur Y et
     l'épaisseur sur Z. L'origine se trouve au milieu de la largeur, sous la
@@ -22,9 +30,11 @@ class DalleOSB:
     epaisseur: float
     largeur: float = 675.0
     longueur: float = 2_500.0
-    materiau: str = "Panneau structurel OSB (classe à définir)"
+    type_bords: TypeBordsOSB | str = TypeBordsOSB.RAINURE_LANGUETTE
+    materiau: str = "Panneau structurel OSB 3 sans formaldéhyde ajouté"
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "type_bords", TypeBordsOSB(self.type_bords))
         if self.epaisseur not in self.EPAISSEURS_DISPONIBLES:
             valeurs = ", ".join(f"{valeur:g}" for valeur in self.EPAISSEURS_DISPONIBLES)
             raise ValueError(f"épaisseur indisponible : choisir {valeurs} mm")
@@ -43,7 +53,8 @@ class DalleOSB:
     @property
     def designation(self) -> str:
         return (
-            f"Dalle OSB {self.largeur:g} × {self.longueur:g}"
+            f"Panneau OSB 3 {self.type_bords.value} "
+            f"{self.largeur:g} × {self.longueur:g}"
             f" × {self.epaisseur:g} mm"
         )
 
@@ -51,7 +62,8 @@ class DalleOSB:
         """Décrit cette dalle pour la nomenclature."""
         return ArticleBOM(
             reference=(
-                f"OSB-{self.largeur:g}x{self.longueur:g}x{self.epaisseur:g}"
+                f"OSB-{self.type_bords.value}-{self.largeur:g}x"
+                f"{self.longueur:g}x{self.epaisseur:g}"
             ).replace(".", "_"),
             designation=self.designation,
             categorie="Panneaux / dalle OSB",
@@ -79,7 +91,7 @@ class PanneauFondCaissonOSB:
     longueur_encoche: float = 82.0
     largeur_encoche: float = 47.0
     avec_encoches: bool = True
-    materiau: str = "Panneau structurel OSB 3"
+    materiau: str = "Panneau structurel OSB 3 à bords droits (BD)"
 
     def __post_init__(self) -> None:
         if self.epaisseur not in DalleOSB.EPAISSEURS_DISPONIBLES:
@@ -126,7 +138,8 @@ class PanneauFondCaissonOSB:
 
     def article_bom(self) -> ArticleBOM:
         reference = (
-            f"OSB-FOND-{self.largeur:g}x{self.longueur:g}x{self.epaisseur:g}"
+            f"OSB-FOND-BD-{self.largeur:g}x{self.longueur:g}x"
+            f"{self.epaisseur:g}"
         ).replace(".", "_")
         if not self.avec_encoches:
             reference += "-RECT"
@@ -134,7 +147,7 @@ class PanneauFondCaissonOSB:
         return ArticleBOM(
             reference=reference,
             designation=(
-                f"Fond de caisson OSB {self.largeur:g} × {self.longueur:g}"
+                f"Fond de caisson OSB 3 BD {self.largeur:g} × {self.longueur:g}"
                 f" × {self.epaisseur:g} mm{suffixe}"
             ),
             categorie="Panneaux / découpe OSB",

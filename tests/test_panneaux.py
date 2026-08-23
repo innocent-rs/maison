@@ -1,6 +1,11 @@
 import unittest
 
-from maison.structure import DalleOSB, PanneauFondCaissonOSB, PanneauPlancherOSB
+from maison.structure import (
+    DalleOSB,
+    PanneauFondCaissonOSB,
+    PanneauPlancherOSB,
+    TypeBordsOSB,
+)
 
 
 class TestDalleOSB(unittest.TestCase):
@@ -21,8 +26,24 @@ class TestDalleOSB(unittest.TestCase):
     def test_article_bom(self) -> None:
         article = DalleOSB(epaisseur=22).article_bom()
 
-        self.assertEqual(article.reference, "OSB-675x2500x22")
+        self.assertEqual(article.reference, "OSB-RL-675x2500x22")
         self.assertEqual(article.volume_mm3, 37_125_000)
+
+    def test_panneau_bd_commercial_pour_fonds_de_caisson(self) -> None:
+        dalle = DalleOSB(
+            epaisseur=12,
+            largeur=1_196,
+            longueur=2_800,
+            type_bords=TypeBordsOSB.BORDS_DROITS,
+        )
+        article = dalle.article_bom()
+
+        self.assertEqual(article.reference, "OSB-BD-1196x2800x12")
+        self.assertIn("OSB 3 BD", article.designation)
+        self.assertEqual(
+            tuple(dalle.construire().bounding_box().size),
+            (2_800, 1_196, 12),
+        )
 
     def test_fond_caisson_avec_encoches_ewh(self) -> None:
         panneau = PanneauFondCaissonOSB(
@@ -38,6 +59,7 @@ class TestDalleOSB(unittest.TestCase):
             volume_plein - 4 * 82 * 47 * 12,
         )
         self.assertEqual(panneau.article_bom().categorie, "Panneaux / découpe OSB")
+        self.assertIn("OSB 3 BD", panneau.article_bom().designation)
 
     def test_fond_caisson_de_rive_rectangulaire(self) -> None:
         panneau = PanneauFondCaissonOSB(
