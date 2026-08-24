@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from local_batteries import creer_local_batteries
 from local_batteries.debit import (
@@ -6,6 +8,12 @@ from local_batteries.debit import (
     calepinage_osb_murs,
     plan_debit_osb,
 )
+from local_batteries.manuel_assemblage import (
+    etapes_assemblage,
+    exporter_manuel_assemblage,
+    poutres_du_plancher,
+)
+from maison.structure.bois import Madrier, PoutreI
 
 
 class TestLocalBatteries(unittest.TestCase):
@@ -33,6 +41,30 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertEqual(nomenclature["MAD-120x240-L3000"].quantite, 2)
         self.assertEqual(nomenclature["MAD-120x240-L2756"].quantite, 5)
         self.assertEqual(nomenclature["SJI-60x240-L593"].quantite, 36)
+
+    def test_manuel_assemblage_selectionne_uniquement_les_poutres(self) -> None:
+        poutres = poutres_du_plancher(self.local)
+
+        self.assertEqual(len(poutres), 43)
+        self.assertTrue(
+            all(isinstance(element.piece, (Madrier, PoutreI)) for element in poutres)
+        )
+        self.assertEqual(
+            [len(etape.nouvelles) for etape in etapes_assemblage(self.local)],
+            [2, 5, 9, 9, 9, 9],
+        )
+
+    def test_manuel_assemblage_est_un_pdf_de_huit_pages(self) -> None:
+        with TemporaryDirectory() as dossier:
+            chemin = exporter_manuel_assemblage(
+                self.local,
+                Path(dossier) / "manuel.pdf",
+            )
+            contenu = chemin.read_bytes()
+
+        self.assertTrue(contenu.startswith(b"%PDF-1.4"))
+        self.assertTrue(contenu.rstrip().endswith(b"%%EOF"))
+        self.assertEqual(contenu.count(b"/Type /Page "), 8)
 
     def test_double_couche_osb_croisee(self) -> None:
         osb = [

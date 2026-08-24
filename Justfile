@@ -64,6 +64,10 @@ local-batteries:
 local-batteries-bom:
     python -m local_batteries.bom
 
+# Génère le POC de manuel PDF depuis la CAO des poutres du plancher
+local-batteries-manuel:
+    python -m local_batteries.manuel_assemblage
+
 # Lance les tests du modèle paramétrique
 test:
     python -m unittest discover -s tests

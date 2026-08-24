@@ -96,6 +96,20 @@ Pour exporter la nomenclature de fabrication et la liste d'achats :
 just local-batteries-bom
 ```
 
+Pour générer le POC de manuel d'assemblage PDF piloté par la CAO :
+
+```console
+just local-batteries-manuel
+```
+
+Le document est écrit dans
+`build/local_batteries/manuel_assemblage_poutres.pdf`. Son périmètre est
+volontairement limité aux 43 poutres du plancher : 2 poutres longitudinales,
+5 traverses et 36 poutres en I. Les quantités, dimensions, positions et vues
+sont relues sur les solides `build123d`; ni les murs, ni les panneaux, ni
+l'isolation, ni les connecteurs ne sont inclus. Le POC décrit donc
+l'implantation et l'ordre de pose, pas encore les gestes de fixation.
+
 Le chiffrage et les prix fournisseurs sont fournis par le framework commun :
 
 ```console
