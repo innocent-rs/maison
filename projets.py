@@ -66,8 +66,11 @@ PROJETS: dict[str, DefinitionProjet] = {
     "local_batteries": DefinitionProjet(
         identifiant="local_batteries",
         construire=creer_local_batteries,
-        lots={"total": lambda projet: projet.nomenclature_achats()},
-        alias_lots={"plancher": "total"},
+        lots={
+            "plancher": lambda projet: projet.nomenclature_achats_plancher(),
+            "murs": lambda projet: projet.nomenclature_achats_murs(),
+            "total": lambda projet: projet.nomenclature_achats(),
+        },
         dossier_sortie=Path("build/local_batteries"),
         resumer_debit=lignes_resume_debit,
         exporter_debit=exporter_debit,

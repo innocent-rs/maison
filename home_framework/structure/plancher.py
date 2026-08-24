@@ -939,8 +939,16 @@ class PlancherBois:
         if self.inclure_solives_i:
             declarations.append(poutres[3])
 
+        def identifiant_solive(ligne: int, travee: int) -> str:
+            suffixe = (
+                f"{ligne:02d}"
+                if self.nombre_traverses == 2
+                else f"{ligne:02d}_{travee}"
+            )
+            return f"solive_{suffixe}"
+
         ids_solives = tuple(
-            f"solive_{ligne:02d}_{travee}"
+            identifiant_solive(ligne, travee)
             for ligne in range(1, self.nombre_lignes_solives_i + 1)
             for travee in range(1, self.nombre_traverses)
         )
@@ -993,7 +1001,7 @@ class PlancherBois:
                             identifiant,
                             f"Tasseau de rive {cote} {travee}",
                             tasseau,
-                            f"solive_{ligne:02d}_{travee}",
+                            identifiant_solive(ligne, travee),
                             Location((x, y, niveau_bas_tasseaux)),
                             "sienna",
                             prerequis=ids_solives,
@@ -1047,11 +1055,11 @@ class PlancherBois:
                             identifiant,
                             f"Fond OSB caisson {interstice:02d}.{travee}",
                             panneau,
-                            f"solive_{interstice:02d}_{travee}",
+                            identifiant_solive(interstice, travee),
                             Location((x, y, niveau_osb)),
                             "peru",
                             prerequis=(
-                                f"solive_{interstice + 1:02d}_{travee}",
+                                identifiant_solive(interstice + 1, travee),
                                 *ids_tasseaux,
                             ),
                             operation=operation_osb,
@@ -1072,7 +1080,7 @@ class PlancherBois:
                             f"tasseau_{cote}_{travee}",
                             Location((x, y, niveau_osb)),
                             "chocolate",
-                            prerequis=(f"solive_{ligne:02d}_{travee}",),
+                            prerequis=(identifiant_solive(ligne, travee),),
                             operation=operation_osb,
                         )
                     )

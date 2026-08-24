@@ -78,8 +78,8 @@ class TestCalculixLocalBatteries(unittest.TestCase):
             for noeud in self.modele.noeuds
         }
 
-        self.assertEqual(len(self.modele.noeuds), 103)
-        self.assertEqual(len(self.modele.elements), 142)
+        self.assertEqual(len(self.modele.noeuds), 22)
+        self.assertEqual(len(self.modele.elements), 26)
         self.assertEqual(
             sum(e.section == "SJ60_240_EQUIVALENTE" for e in self.modele.elements),
             2 * plancher.nombre_solives_i,
@@ -99,7 +99,7 @@ class TestCalculixLocalBatteries(unittest.TestCase):
         difference = self.modele.charge_verticale_n - modele_1kg.charge_verticale_n
 
         self.assertAlmostEqual(difference, 999 * 9.81, places=6)
-        self.assertAlmostEqual(self.modele.charge_verticale_n, 15_438.043271808)
+        self.assertAlmostEqual(self.modele.charge_verticale_n, 14_086.249498584)
 
     def test_hypotheses_critiques_sont_dans_le_fichier(self) -> None:
         entree = self.modele.entree()

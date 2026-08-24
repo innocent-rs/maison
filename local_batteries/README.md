@@ -5,43 +5,35 @@ technique, soit une emprise de plancher de `3 000 × 3 000 mm` (`9,00 m²`). Il
 réutilise les familles de composants déjà présentes dans le projet principal
 et vise une forte rigidité pour environ `1 000 kg` de batteries posées au sol.
 
-## Principe retenu
+## Principe retenu : un plancher simple
 
 - 2 madriers collés Douglas GT24 de `120 × 240 × 3 000 mm` en rives ;
-- 5 traverses dans le même madrier, coupées à `2 756 mm` entre sabots SAI ;
-- 9 lignes de STEICOjoist `SJ60/240`, à entraxe réel `276,8 mm` ;
-- 4 travées par ligne, soit 36 tronçons de poutre en I de `593 mm` ;
-- étriers EWH aux deux extrémités de chaque tronçon ;
-- Isonat Flex 55 de `145 mm` entre les âmes des poutres en I ;
-- 40 fonds de caisson en OSB 3 BD de `12 mm`, posés par le dessus ;
-- 8 tasseaux de rive Douglas de `60 × 40 × 593 mm` à gauche et à droite ;
-- 1 couche porteuse d'OSB 3 rainuré-languetté de `22 mm` ;
+- 2 traverses d'extrémité dans le même madrier, coupées à `2 756 mm` ;
+- 4 STEICOjoist `SJ60/240` continues de `2 750 mm`, entraxe `553,6 mm` ;
+- 8 étriers EWH et 4 sabots SAI au total ;
+- Isonat Flex 55 de `145 mm` dans les cinq grands caissons ;
+- 5 fonds de caisson en OSB 3 BD de `12 mm`, posés par le dessus ;
+- 2 tasseaux de rive Douglas de `60 × 40 × 2 750 mm` ;
+- une seule couche porteuse d'OSB 3 rainuré-languetté de `22 mm` ;
 - quatre murs en ossature Douglas `45 × 145 mm`, hauteur `2 575 mm` ;
 - une réservation de porte centrée de `900 × 2 150 mm`, sans fenêtre ;
 - isolation murale Isonat Flex 55 de `145 mm` ;
 - voile extérieur en OSB 3 BD de `12 mm`.
 
-La traverse centrale passe sous l'axe du local. Les quatre travées de poutres
-en I ne font que `593 mm`, ce qui évite de faire travailler les SJ60/240 sur
-une portée proche des 3 m.
+L'ancienne grille de cinq traverses et 36 petits tronçons de poutre en I reste
+constructible par `creer_local_batteries_renforce()`, uniquement pour comparer
+les coûts et les calculs. Elle n'est plus la variante courante.
 
-La couche porteuse alterne ses joints d'about entre la traverse centrale et
-les deux traverses intermédiaires latérales. Chaque joint est ainsi porté et
-il n'existe aucune ligne de joint continue d'une bande à l'autre. Son débit
-demande 8 dalles brutes de `2 500 × 675 × 22 mm`.
+Le grand axe des dalles OSB supérieures est perpendiculaire aux SJ60/240. Leur
+unique ligne de joints d'about tombe sur la quatrième solive. Dix découpes sont
+issues de 7 dalles brutes `2 500 × 675 × 22 mm`. Les cinq fonds inférieurs de
+`2 750 × 542,6 mm` utilisent toujours 3 panneaux OSB BD : la simplification
+réduit surtout les coupes et les fixations, sans retirer le contreventement bas.
 
-Les fonds OSB sont découpés en 40 morceaux de `593 × 265,8 mm`. Ils sont
-descendus dans les caissons par le dessus et reposent sur les membrures basses
-des poutres en I. Dans les huit caissons des rives gauche et droite, leur bord
-extérieur repose sur un tasseau Douglas `60 × 40 mm` fixé latéralement au
-madrier. Aucun panneau continu ne passe sous la dalle. Une grille de 16 fonds
-par panneau demande 3 panneaux OSB 3 BD de `2 800 × 1 196 × 12 mm`.
-
-L'isolant est découpé en 40 morceaux posés de `599 × 268,8 mm`, directement
-au-dessus des fonds OSB. Les coupes de `607,5 × 278,8 mm` intègrent la
-compression de pose et permettent quatre morceaux par panneau Isonat brut,
-soit 10 panneaux utiles. Le conditionnement
-commercial de quatre panneaux conduira le chiffrage à acheter trois colis.
+Chaque caisson reçoit deux longueurs d'isolant de `1 220 mm` et un complément
+de `316 mm`. Les dix grandes découpes consomment dix panneaux ; les cinq
+compléments sont regroupés sur deux panneaux, soit 12 panneaux pour le
+plancher.
 
 ## Murs et porte
 
@@ -68,17 +60,17 @@ de `304 mm`. Une chute de `274 mm` fournit les quatre morceaux
 nécessaire pour le linteau.
 
 Les murs contiennent 48 découpes d'isolant issues de 37 panneaux Isonat. Les
-douze bandes étroites de la façade sont débitées deux par panneau. Avec les 10
-panneaux du plancher, la commande totale est de 47 panneaux, arrondie par le
-chiffrage commun à 12 colis de quatre.
+douze bandes étroites de la façade sont débitées deux par panneau. Avec les 12
+panneaux du plancher, la commande totale est de 49 panneaux, arrondie par le
+chiffrage commun à 13 colis de quatre.
 
 L'ossature représente `106,00 m` utiles de Douglas `45 × 145 mm`, débités dans
 20 barres de 6 m avec un rendement de `88,33 %`. Le tarif de cette nouvelle
 famille de coupe reste centralisé dans `catalogues/prix.py`.
 
-La rigidité recherchée vient donc d'une trame serrée, de travées courtes et de
-la peau porteuse continue. Son interaction avec les solives et les assemblages
-devra être étudiée explicitement dans le futur modèle CalculiX.
+La rigidité recherchée vient des quatre SJ60/240 continues et de la peau
+porteuse. Le local reste volontairement une boîte technique : aucune cloison,
+fenêtre ou finition intérieure n'est ajoutée au nom de l'optimisation.
 
 ## Utilisation
 
@@ -102,22 +94,25 @@ just local-batteries-manuel
 
 Le document est écrit dans
 `build/local_batteries/manuel_assemblage_poutres.pdf`. Il couvre désormais la
-totalité du plancher : 43 poutres, 10 sabots Simpson SAI,
-72 étriers Simpson EWH, 8 tasseaux de rive, 40 fonds OSB et 40 découpes
-d'isolant, puis 12 panneaux OSB porteurs. Les
+totalité du plancher : 8 poutres, 4 sabots Simpson SAI,
+8 étriers Simpson EWH, 2 tasseaux de rive, 5 fonds OSB et 15 découpes
+d'isolant, puis 10 découpes OSB porteuses. Les
 quantités, dimensions, positions et vues sont relues sur le
 graphe de contraintes qui produit aussi les solides `build123d`, la BOM et les
-débits. Les douze opérations ne sont pas écrites dans le générateur : elles sont
+débits. Les neuf opérations ne sont pas écrites dans le générateur : elles sont
 déduites des références orientées et du regroupement des pièces partageant la
 même intention de pose. Les textes et contrôles de fixation Simpson sont
 portés par les déclarations CAO. Les murs restent hors de cette édition du
 manuel.
+
+## Chiffrage et optimisation
 
 Le chiffrage et les prix fournisseurs sont fournis par le framework commun :
 
 ```console
 just chiffrage local_batteries
 just optimiser local_batteries
+just local-batteries-chiffrage
 ```
 
 Le sous-projet ne contient aucun prix. Les références communes sont résolues
@@ -125,10 +120,25 @@ par `catalogues/prix.py`, y compris automatiquement pour toute longueur de madri
 `120 × 240`, de STEICOjoist `SJ60/240`, de tasseau `60 × 40` ou de bois
 d'ossature `45 × 145`. Les CSV sont écrits dans `build/local_batteries/`.
 
+Aux tarifs TTC datés dans le catalogue, la BOM d'achat complète actuellement
+renseignée passe de `4 732,30 €` pour l'ancienne grille renforcée à
+`3 258,32 €` pour le plancher simple, soit `1 473,98 €` ou `31,1 %`
+d'économie. Ce total est un coût de fournitures : il exclut notamment
+livraison, main-d'œuvre, fondations, toiture, porte, bardage et électricité.
+La variante retenue se répartit en `1 685,52 €` pour le plancher complet et
+`1 572,80 €` pour les quatre murs.
+
+Le comparatif n'utilise pas des mètres théoriques : il achète des barres et
+conditionnements entiers. La simplification fait notamment passer le Douglas
+`120 × 240` de deux barres à une, les SJ60/240 de deux barres à une, les EWH de
+72 à 8 et les SAI de 10 à 4. L'isolant de plancher augmente de deux panneaux,
+ce qui est inclus dans le solde. `comparatif_couts.md`, `chiffrage_renforce.csv`
+et `chiffrage_optimise.csv` sont générés dans `build/local_batteries/`.
+
 ## POC CalculiX piloté par la CAO
 
 Le premier modèle éléments finis du plancher est généré directement depuis le
-`PlancherBois` du local : les cinq axes de traverses, les neuf axes de solives,
+`PlancherBois` du local : les deux axes de traverses, les quatre axes de solives,
 les sections, les longueurs et la masse des composants ne sont pas ressaisis
 dans un fichier FreeCAD. Le framework commun écrit un jeu CalculiX `B31`, lance
 le solveur et contrôle l'équilibre entre charges et réactions :
@@ -175,9 +185,10 @@ freecad build/local_batteries/simulation_calculix/plancher_local.frd
 Le cas par défaut place `1 000 kg` au centre sur une empreinte supposée de
 `1 000 × 1 000 mm`. Avec les poids propres du châssis, des deux OSB du plancher
 (fond de caisson de 12 mm et unique peau supérieure de 22 mm) et de l'isolant,
-la charge verticale atteint `15,438 kN`. CalculiX 2.23 donne une flèche élastique
-maximale de `1,504 mm` et quatre réactions symétriques de `3,860 kN`, avec une
-erreur d'équilibre de `0,00024 N`.
+la charge verticale atteint `14,086 kN`. CalculiX 2.23 donne une flèche élastique
+maximale de `4,038 mm` et quatre réactions symétriques de `3,522 kN`. Le repère
+indicatif `L/300` vaut `9,17 mm`. Un cas exploratoire linéaire à `2 000 kg`
+atteint `7,613 mm`, mais ne constitue pas une charge admissible.
 
 Ce résultat est une première borne de raideur : les croisements SAI/EWH sont
 parfaitement rigides et l'OSB distribue les charges sans contribuer à la
@@ -185,7 +196,7 @@ rigidité. Les rigidités `EI = 709 kN·m²` et `GA = 3,18 MN` de la SJ60/240 so
 reproduites par une section orthotrope équivalente. Les murs, les fondations,
 le glissement et la résistance des connecteurs, le fluage, les vibrations, les
 combinaisons ELU, le poinçonnement local de l'OSB et les vérifications au feu
-sont exclus. La valeur de `1,504 mm` ne constitue donc ni une charge admissible
+sont exclus. La valeur de `4,038 mm` ne constitue donc ni une charge admissible
 ni une validation de construction.
 
 La heat map automatique montre où le plancher se déplace le plus, pas où une

@@ -8,7 +8,7 @@ from pathlib import Path
 from home_framework.optimisation import PieceDebit, PlanDebit, optimiser_debit
 from home_framework.structure import DalleOSB, TypeBordsOSB
 
-from .modele import LocalBatteries
+from .modele import LocalBatteries, VariantePlancherLocal
 
 
 def lots_decoupes_osb(
@@ -20,7 +20,11 @@ def lots_decoupes_osb(
         if not element.nom.startswith("OSB porteur"):
             continue
         couche = "porteuse"
-        orientation = "X"
+        orientation = (
+            "Y"
+            if local.variante_plancher is VariantePlancherLocal.OPTIMISEE
+            else "X"
+        )
         piece = element.piece
         lots[(couche, piece.longueur, piece.largeur, piece.epaisseur, orientation)] += 1
     return tuple(
@@ -67,7 +71,13 @@ def lignes_resume_debit(local: LocalBatteries, lot: str) -> tuple[str, ...]:
         f"{local.nombre_panneaux_isolant_achetes + local.murs.nombre_panneaux_isolant_achetes} "
         "panneau(x) brut(s)"
     )
-    lignes.append("  plancher : 10 panneaux — 40 découpes de 607,5 × 278,8 mm")
+    if local.variante_plancher is VariantePlancherLocal.OPTIMISEE:
+        lignes.append(
+            "  plancher : 12 panneaux — 10 découpes pleine longueur et "
+            "5 compléments regroupés sur 2 panneaux"
+        )
+    else:
+        lignes.append("  plancher : 10 panneaux — 40 découpes de 607,5 × 278,8 mm")
     lignes.append("  murs : 37 panneaux — 48 découpes, selon CSV spécifique")
     return tuple(lignes)
 
@@ -109,7 +119,7 @@ def calepinage_osb_murs(
 
 
 def plan_debit_osb(local: LocalBatteries) -> PlanDebit:
-    """Optimise les coupes de 600 mm de large dans la longueur des dalles."""
+    """Optimise les longueurs coupées dans les dalles commerciales."""
     pieces = []
     for element in local.elements():
         if not element.nom.startswith("OSB porteur"):
@@ -191,6 +201,11 @@ def exporter_debit(local: LocalBatteries, lot: str, dossier: Path) -> tuple[Path
             )
         )
         for panneau in plan.barres:
+            largeurs_par_reference = {
+                f"OSB-PORTEUR-{element.nom.rsplit(' ', 1)[-1]}": element.piece.largeur
+                for element in local.elements()
+                if element.nom.startswith("OSB porteur")
+            }
             writer.writerow(
                 (
                     dalle.article_bom().reference,
@@ -198,7 +213,10 @@ def exporter_debit(local: LocalBatteries, lot: str, dossier: Path) -> tuple[Path
                     f"{panneau.longueur_stock_mm:g}",
                     "675",
                     " + ".join(f"{piece.longueur_mm:g}" for piece in panneau.pieces),
-                    "600",
+                    " + ".join(
+                        f"{largeurs_par_reference[piece.reference_bom]:g}"
+                        for piece in panneau.pieces
+                    ),
                     " + ".join(piece.reference_bom for piece in panneau.pieces),
                     panneau.nombre_traits,
                     f"{panneau.trait_scie_mm:g}",
@@ -249,7 +267,7 @@ def exporter_debit(local: LocalBatteries, lot: str, dossier: Path) -> tuple[Path
                     f"{longueur_fond:g}",
                     f"{largeur_fond:g}",
                     "5",
-                    "grille 4 × 4" if quantite == 16 else "grille 4 × 2",
+                    f"{quantite} bande(s) longitudinale(s)",
                 )
             )
 
@@ -308,16 +326,45 @@ def exporter_debit(local: LocalBatteries, lot: str, dossier: Path) -> tuple[Path
                 "calepinage",
             )
         )
-        for numero in range(1, local.nombre_panneaux_isolant_achetes + 1):
+        if local.variante_plancher is VariantePlancherLocal.RENFORCEE:
+            groupes_isolant = tuple(
+                ((607.5, 278.8),) * 4
+                for _ in range(local.nombre_panneaux_isolant_achetes)
+            )
+        else:
+            decoupes = [
+                element.piece
+                for element in local.assemblage_plancher().pieces
+                if element.nom.startswith("Isolant Isonat")
+            ]
+            plan_isolant = optimiser_debit(
+                (
+                    PieceDebit(
+                        reference_bom=piece.article_bom().reference,
+                        designation=piece.article_bom().designation,
+                        longueur_mm=piece.longueur_decoupe,
+                    )
+                    for piece in decoupes
+                ),
+                longueur_stock_mm=1_220,
+            )
+            if plan_isolant.nombre_barres != local.nombre_panneaux_isolant_achetes:
+                raise ValueError("le débit isolant du plancher ne correspond pas à la BOM")
+            largeur = decoupes[0].largeur_decoupe
+            groupes_isolant = tuple(
+                tuple((float(piece.longueur_mm), largeur) for piece in barre.pieces)
+                for barre in plan_isolant.barres
+            )
+        for numero, groupe in enumerate(groupes_isolant, start=1):
             writer.writerow(
                 (
                     "ISOL-ISONAT-FLEX55-145x580x1220",
                     numero,
-                    4,
-                    "607.5",
-                    "278.8",
+                    len(groupe),
+                    " + ".join(f"{longueur:g}" for longueur, _ in groupe),
+                    " + ".join(f"{largeur:g}" for _, largeur in groupe),
                     "145",
-                    "grille 2 × 2, surcote de compression incluse",
+                    "découpes longitudinales, surcote de pose incluse",
                 )
             )
 

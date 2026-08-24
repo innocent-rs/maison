@@ -250,6 +250,15 @@ just chiffrage local_batteries
 ```
 
 Le résultat est écrit dans `build/local_batteries/chiffrage_total.csv`.
+Le comparatif reproductible entre l'ancienne grille renforcée et le plancher
+simple courant s'obtient avec :
+
+```console
+just local-batteries-chiffrage
+```
+
+Il chiffre les conditionnements et barres réellement achetés, puis écrit les
+deux CSV et `build/local_batteries/comparatif_couts.md`.
 
 Ou un seul sous-ensemble :
 

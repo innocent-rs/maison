@@ -8,7 +8,10 @@ class TestRegistreProjets(unittest.TestCase):
         definition = PROJETS["local_batteries"]
         projet = definition.construire()
 
-        self.assertEqual(definition.lots_demandes("tous"), ("total",))
+        self.assertEqual(
+            definition.lots_demandes("tous"),
+            ("plancher", "murs", "total"),
+        )
         self.assertEqual(
             definition.nomenclature(projet, "total").nombre_pieces,
             projet.nomenclature_achats().nombre_pieces,

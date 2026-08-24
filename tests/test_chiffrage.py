@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from chiffrer import lignes_recapitulatif_achats
 from local_batteries import creer_local_batteries
+from local_batteries.chiffrage import comparer_couts
 from main import make_part
 from home_framework.chiffrage import Chiffrage, Tarif
 from maison.geometrie import GeometrieAFrame
@@ -232,7 +233,29 @@ class TestChiffrage(unittest.TestCase):
         self.assertEqual(len(chiffrage.plans_debit), 3)
         self.assertEqual(
             chiffrage.sous_total_renseigne_ttc_eur,
+            Decimal("3258.32"),
+        )
+
+    def test_optimisation_local_batteries_economise_trente_et_un_pourcent(self) -> None:
+        comparatif = comparer_couts()
+
+        self.assertEqual(
+            comparatif.renforce.sous_total_renseigne_ttc_eur,
             Decimal("4732.30"),
+        )
+        self.assertEqual(
+            comparatif.optimise.sous_total_renseigne_ttc_eur,
+            Decimal("3258.32"),
+        )
+        self.assertEqual(comparatif.economie_ttc_eur, Decimal("1473.98"))
+        self.assertGreater(comparatif.economie_pourcent, Decimal("31"))
+        self.assertEqual(
+            comparatif.plancher_optimise.sous_total_renseigne_ttc_eur,
+            Decimal("1685.52"),
+        )
+        self.assertEqual(
+            comparatif.murs.sous_total_renseigne_ttc_eur,
+            Decimal("1572.80"),
         )
 
     def test_plancher_osb_achete_quatorze_dalles_et_trois_boites(self) -> None:

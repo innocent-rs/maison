@@ -64,6 +64,10 @@ local-batteries:
 local-batteries-bom:
     python -m local_batteries.bom
 
+# Chiffre le local courant et compare l'ancien plancher renforcé
+local-batteries-chiffrage:
+    python -m local_batteries.chiffrage
+
 # Génère le POC de manuel PDF depuis la CAO des poutres du plancher
 local-batteries-manuel:
     python -m local_batteries.manuel_assemblage
