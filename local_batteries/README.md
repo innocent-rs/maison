@@ -104,15 +104,16 @@ just local-batteries-manuel
 
 Le document est écrit dans
 `build/local_batteries/manuel_assemblage_poutres.pdf`. Il couvre désormais la
-structure du plancher jusqu'à l'isolation : 43 poutres, 10 sabots Simpson SAI,
+totalité du plancher : 43 poutres, 10 sabots Simpson SAI,
 72 étriers Simpson EWH, 8 tasseaux de rive, 40 fonds OSB et 40 découpes
-d'isolant. Les quantités, dimensions, positions et vues sont relues sur le
+d'isolant, puis 12 panneaux OSB porteurs et 10 panneaux OSB croisés. Les
+quantités, dimensions, positions et vues sont relues sur le
 graphe de contraintes qui produit aussi les solides `build123d`, la BOM et les
-débits. Les onze opérations ne sont pas écrites dans le générateur : elles sont
+débits. Les treize opérations ne sont pas écrites dans le générateur : elles sont
 déduites des références orientées et du regroupement des pièces partageant la
 même intention de pose. Les textes et contrôles de fixation Simpson sont
-portés par les déclarations CAO. Les murs et les deux couches d'OSB supérieures
-restent hors de cette édition du manuel.
+portés par les déclarations CAO. Les murs restent hors de cette édition du
+manuel.
 
 Le chiffrage et les prix fournisseurs sont fournis par le framework commun :
 

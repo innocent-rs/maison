@@ -1,9 +1,8 @@
 """Plancher très rigide de 9 m² pour le local batteries."""
 
 from dataclasses import dataclass
-from gc import collect
 
-from build123d import Align, Box, Location, Pos, Rot
+from build123d import Align, Box, Location
 
 from home_framework.assemblage import (
     AssemblageContraint,
@@ -176,30 +175,77 @@ class LocalBatteries:
         return tuple(declarations)
 
     def assemblage_plancher(self) -> AssemblageContraint:
-        """Source unique du manuel et de la CAO du plancher jusqu'à l'isolant."""
-        # Les joints build123d se référencent mutuellement. Une collecte avant
-        # une nouvelle résolution libère les graphes devenus inaccessibles.
-        collect()
+        """Source unique de la CAO et du manuel jusqu'au plancher fini."""
         return AssemblageContraint.declarer(
             *self.plancher.declarations_assemblage(),
             *self._declarations_isolant(),
+            *self._declarations_osb_superieur(),
         )
 
-    def _elements_isolant(self) -> list[ElementPlancher]:
-        return [
-            piece
-            for piece in self.assemblage_plancher().pieces
-            if isinstance(piece.piece, DecoupeIsonatLocalBatteries)
-        ]
-
-    def _elements_osb(self) -> list[ElementPlancher]:
-        elements: list[ElementPlancher] = []
+    def _declarations_osb_superieur(self) -> tuple[PieceInstance, ...]:
+        """Déclare les deux couches OSB et leurs recouvrements réels."""
+        declarations: list[PieceInstance] = []
         niveau_bas = self.plancher.niveau_haut_traverses
+
+        def chevauche(
+            rectangle_a: tuple[float, float, float, float],
+            rectangle_b: tuple[float, float, float, float],
+        ) -> bool:
+            ax1, ax2, ay1, ay2 = rectangle_a
+            bx1, bx2, by1, by2 = rectangle_b
+            return min(ax2, bx2) - max(ax1, bx1) > 1e-6 and min(
+                ay2, by2
+            ) - max(ay1, by1) > 1e-6
+
+        demi_traverse = self.plancher.section_largeur / 2
+        demi_ame = self.plancher.epaisseur_ame_solive_i / 2
+        axes_traverses = self.plancher.axes_traverses()
+        axes_solives = self.plancher.axes_solives_i()
+        face_rive_gauche = -1_500 + self.plancher.section_largeur
+        face_rive_droite = 1_500 - self.plancher.section_largeur
+        limites_caissons_y = (
+            (face_rive_gauche, axes_solives[0] - demi_ame),
+            *(
+                (axe_gauche + demi_ame, axe_droit - demi_ame)
+                for axe_gauche, axe_droit in zip(axes_solives, axes_solives[1:])
+            ),
+            (axes_solives[-1] + demi_ame, face_rive_droite),
+        )
+        rectangles_isolant = tuple(
+            (
+                f"isolant_local_{caisson:02d}_{travee}",
+                (
+                    axe_gauche + demi_traverse,
+                    axe_droit - demi_traverse,
+                    debut_y,
+                    fin_y,
+                ),
+            )
+            for travee, (axe_gauche, axe_droit) in enumerate(
+                zip(axes_traverses, axes_traverses[1:]),
+                start=1,
+            )
+            for caisson, (debut_y, fin_y) in enumerate(
+                limites_caissons_y,
+                start=1,
+            )
+        )
+
+        operation_porteuse = InstructionAssemblage(
+            "osb_porteur",
+            "Poser la première couche OSB porteuse",
+            "Poser les panneaux rainurés-languettés perpendiculairement aux "
+            "solives. Alterner les joints d'about et les centrer sur les "
+            "traverses avant vissage.",
+            (
+                "Tous les joints d'about doivent être portés par une traverse",
+                f"Fixation totale : {self.nombre_vis_couche_inferieure} vis 5×60",
+            ),
+        )
 
         # Couche porteuse : cinq rangées de 600 mm alternent leurs joints
         # d'about. Les rangées impaires joignent sur la traverse centrale ; les
         # rangées paires sur les deux autres traverses intermédiaires.
-        axes_traverses = self.plancher.axes_traverses()
         limites_centrales = (0.0, axes_traverses[2], 3_000.0)
         limites_laterales = (
             0.0,
@@ -208,6 +254,9 @@ class LocalBatteries:
             3_000.0,
         )
         index = 0
+        panneaux_porteurs: list[
+            tuple[str, tuple[float, float, float, float]]
+        ] = []
         for bande_y in range(5):
             limites_x = (
                 limites_centrales if bande_y % 2 == 0 else limites_laterales
@@ -220,23 +269,47 @@ class LocalBatteries:
                     longueur=round(fin_x - debut_x, 6),
                     materiau="OSB 3 R+L — couche porteuse inférieure",
                 )
-                elements.append(
-                    ElementPlancher(
+                debut_y = -1_500 + bande_y * 600
+                rectangle = (debut_x, fin_x, debut_y, debut_y + 600)
+                identifiant = f"osb_porteur_{index:02d}"
+                panneaux_porteurs.append((identifiant, rectangle))
+                isolants_recouverts = tuple(
+                    identifiant_isolant
+                    for identifiant_isolant, rectangle_isolant in rectangles_isolant
+                    if chevauche(rectangle, rectangle_isolant)
+                )
+                index_traverse = min(
+                    range(len(axes_traverses)),
+                    key=lambda position: abs(axes_traverses[position] - debut_x),
+                )
+                declarations.append(
+                    PieceInstance.placer_sur(
+                        identifiant,
                         f"OSB inférieur {index:02d}",
                         piece_inferieure,
-                        Pos(
-                            debut_x,
-                            -1_500 + bande_y * 600 + 300,
-                            niveau_bas,
-                        )
-                        * piece_inferieure.construire(),
+                        f"traverse_{index_traverse + 1:02d}",
+                        Location((debut_x, debut_y + 300, niveau_bas)),
                         "darkorange",
+                        prerequis=isolants_recouverts,
+                        operation=operation_porteuse,
                     )
                 )
 
+        operation_repartition = InstructionAssemblage(
+            "osb_repartition",
+            "Poser la couche OSB croisée",
+            "Tourner la seconde couche de 90° et alterner ses joints d'about "
+            "sur deux axes de solives afin de supprimer toute charnière "
+            "continue entre les couches.",
+            (
+                "Orientation croisée à 90° par rapport à la couche porteuse",
+                "Tous les joints d'about doivent être portés par une solive",
+                f"Fixation totale : {self.nombre_vis_couche_superieure} vis 5×80",
+            ),
+        )
+
         # La couche supérieure est croisée à 90°. Son joint d'about alterne
         # entre deux axes de solives afin de supprimer toute charnière continue.
-        axes_solives = self.plancher.axes_solives_i()
         joints_y = (axes_solives[7], axes_solives[1])
         index = 0
         for bande_x in range(5):
@@ -249,22 +322,33 @@ class LocalBatteries:
                     longueur=round(fin_y - debut_y, 6),
                     materiau="OSB 3 R+L — couche de répartition supérieure",
                 )
-                elements.append(
-                    ElementPlancher(
+                debut_x = bande_x * 600
+                rectangle = (debut_x, debut_x + 600, debut_y, fin_y)
+                porteurs_recouverts = tuple(
+                    identifiant_porteur
+                    for identifiant_porteur, rectangle_porteur in panneaux_porteurs
+                    if chevauche(rectangle, rectangle_porteur)
+                )
+                declarations.append(
+                    PieceInstance.placer_sur(
+                        f"osb_repartition_{index:02d}",
                         f"OSB supérieur {index:02d}",
                         piece,
-                        Pos(bande_x * 600 + 300, debut_y, niveau_bas + 22)
-                        * Rot(0, 0, 90)
-                        * piece.construire(),
+                        porteurs_recouverts[0],
+                        Location(
+                            (debut_x + 300, debut_y, niveau_bas + 22),
+                            (0, 0, 90),
+                        ),
                         "orangered",
+                        prerequis=porteurs_recouverts[1:],
+                        operation=operation_repartition,
                     )
                 )
-        return elements
+        return tuple(declarations)
 
     def elements(self) -> list[ElementPlancher]:
         return [
             *self.assemblage_plancher().pieces,
-            *self._elements_osb(),
             *self.murs.elements(),
         ]
 
@@ -272,7 +356,6 @@ class LocalBatteries:
         pieces: list[Nomenclaturable] = [
             *self.assemblage_plancher().pieces,
             *self.plancher.lots_fixations(),
-            *self._elements_osb(),
             *self.murs.pieces_bom(),
             LotBOM(
                 VisPlancherOSB5x60().article_bom(),

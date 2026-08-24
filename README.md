@@ -142,7 +142,8 @@ différent. Les `InstructionAssemblage` attachent les gestes et contrôles aux
 objets CAO. Le manuel PDF devient ainsi un renderer de cette même source au
 lieu de maintenir une liste d'étapes séparée. Pour le local batteries, le
 graphe couvre les SAI, les traverses, les EWH, les solives, les tasseaux, les
-fonds OSB et l'isolant, dans cet ordre déduit des contraintes.
+fonds OSB, l'isolant, la couche OSB porteuse puis la couche croisée, dans cet
+ordre déduit des contraintes et des recouvrements géométriques.
 
 ### Chiffrage par lot
 

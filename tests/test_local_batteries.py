@@ -51,7 +51,7 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertEqual(nomenclature["MAD-120x240-L2756"].quantite, 5)
         self.assertEqual(nomenclature["SJI-60x240-L593"].quantite, 36)
 
-    def test_manuel_assemblage_couvre_le_plancher_jusqu_a_l_isolant(self) -> None:
+    def test_manuel_assemblage_couvre_le_plancher_fini(self) -> None:
         poutres = poutres_du_plancher(self.local)
         elements = elements_du_manuel(self.local)
 
@@ -59,10 +59,10 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertTrue(
             all(isinstance(element.piece, (Madrier, PoutreI)) for element in poutres)
         )
-        self.assertEqual(len(elements), 213)
+        self.assertEqual(len(elements), 235)
         self.assertEqual(
             [len(etape.nouvelles) for etape in etapes_assemblage(self.local)],
-            [2, 10, 5, 72, 9, 9, 9, 9, 8, 40, 40],
+            [2, 10, 5, 72, 9, 9, 9, 9, 8, 40, 40, 12, 10],
         )
 
     def test_sabots_osb_et_isolant_forment_une_chaine_de_dependances(self) -> None:
@@ -95,6 +95,14 @@ class TestLocalBatteries(unittest.TestCase):
             instances["isolant_local_01_1"].contrainte.references,
             ("fond_osb_rive_gauche_1",),
         )
+        self.assertIn(
+            "isolant_local_01_1",
+            instances["osb_porteur_01"].contrainte.references,
+        )
+        self.assertIn(
+            "osb_porteur_01",
+            instances["osb_repartition_01"].contrainte.references,
+        )
         self.assertEqual(
             [operation.identifiant for operation in assemblage.operations()],
             [
@@ -109,6 +117,8 @@ class TestLocalBatteries(unittest.TestCase):
                 "tasseaux_rive",
                 "fonds_osb",
                 "isolant_caissons",
+                "osb_porteur",
+                "osb_repartition",
             ],
         )
 
@@ -196,7 +206,7 @@ class TestLocalBatteries(unittest.TestCase):
             solive.forme.joints["debut"],
         )
 
-    def test_manuel_assemblage_est_un_pdf_de_treize_pages(self) -> None:
+    def test_manuel_assemblage_est_un_pdf_de_quinze_pages(self) -> None:
         with TemporaryDirectory() as dossier:
             chemin = exporter_manuel_assemblage(
                 self.local,
@@ -206,7 +216,7 @@ class TestLocalBatteries(unittest.TestCase):
 
         self.assertTrue(contenu.startswith(b"%PDF-1.4"))
         self.assertTrue(contenu.rstrip().endswith(b"%%EOF"))
-        self.assertEqual(contenu.count(b"/Type /Page "), 13)
+        self.assertEqual(contenu.count(b"/Type /Page "), 15)
 
     def test_double_couche_osb_croisee(self) -> None:
         osb = [

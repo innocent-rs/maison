@@ -11,6 +11,7 @@ from collections import Counter
 from copy import copy
 from dataclasses import dataclass
 from functools import lru_cache
+from gc import collect
 from itertools import product
 from typing import Protocol, Sequence
 
@@ -552,6 +553,9 @@ class AssemblageContraint:
     """Graphe orienté résolvant CAO, BOM et opérations d'assemblage."""
 
     def __init__(self, instances: Sequence[PieceInstance]) -> None:
+        # Les joints natifs se référencent mutuellement. Libérer les anciens
+        # graphes avant d'en résoudre un nouveau évite d'accumuler leur CAO.
+        collect()
         self._instances = tuple(instances)
         identifiants = [instance.identifiant for instance in self._instances]
         if len(identifiants) != len(set(identifiants)):

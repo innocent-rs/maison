@@ -422,12 +422,12 @@ def exporter_manuel(
             (40, 190, 515, 405),
             dessus=False,
         )
-        commandes.append(pdf.rectangle(40, 615, 515, 118, (0.95, 0.96, 0.97)))
-        commandes.append(pdf.texte(56, 642, "CONTRÔLES CAO", 9, True, (0.42, 0.45, 0.48)))
-        y_controle = 667
+        commandes.append(pdf.rectangle(40, 600, 515, 145, (0.95, 0.96, 0.97)))
+        commandes.append(pdf.texte(56, 625, "CONTRÔLES CAO", 9, True, (0.42, 0.45, 0.48)))
+        y_controle = 648
         for controle in etape.controles:
-            commandes.append(pdf.texte(58, y_controle, "• " + controle, 9))
-            y_controle += 20
+            commandes.append(pdf.texte(58, y_controle, "• " + controle, 8))
+            y_controle += 17
         commandes.append(pdf.texte(420, 758, "orange = à poser", 8, True, (0.82, 0.31, 0.06)))
         commandes.append(pdf.texte(420, 774, "gris = déjà posé", 8, False, (0.45, 0.48, 0.5)))
         _pied_page(pdf, commandes)
