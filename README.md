@@ -106,6 +106,19 @@ Le résultat est écrit dans `build/bom.csv` avec un séparateur `;`, adapté au
 tableurs en environnement français. Chaque nouvelle famille de pièces doit
 implémenter `article_bom()` ; elle est ensuite agrégée sans modifier l'exporteur.
 
+### Assemblages contraints
+
+Les composants linéaires du plancher peuvent être décrits par un graphe de
+contraintes orientées dans `maison/assemblage.py`. Une `PieceInstance` porte à
+la fois son article de BOM et son intention de placement : ancrage dans le
+repère, décalage parallèle ou positionnement entre deux faces. La résolution
+de ce graphe produit les solides `build123d` consommés par la CAO et la BOM.
+
+Les dépendances et les appuis communs permettent également de déduire une
+timeline d'assemblage, même lorsque les pièces sont déclarées dans un ordre
+différent. Le manuel PDF devient ainsi un renderer de cette même source au
+lieu de maintenir une liste d'étapes séparée.
+
 ### Chiffrage par lot
 
 Les tarifs TTC sont maintenus directement en Python dans

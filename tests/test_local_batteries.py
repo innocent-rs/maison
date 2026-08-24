@@ -13,6 +13,12 @@ from local_batteries.manuel_assemblage import (
     exporter_manuel_assemblage,
     poutres_du_plancher,
 )
+from maison.assemblage import (
+    Ancrage,
+    AssemblageContraint,
+    DecalageParallele,
+    EntreFaces,
+)
 from maison.structure.bois import Madrier, PoutreI
 
 
@@ -52,6 +58,64 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertEqual(
             [len(etape.nouvelles) for etape in etapes_assemblage(self.local)],
             [2, 5, 9, 9, 9, 9],
+        )
+
+    def test_contraintes_poutres_gouvernent_cao_bom_et_timeline(self) -> None:
+        assemblage = self.plancher.assemblage_poutres()
+        instances = {instance.identifiant: instance for instance in assemblage.instances}
+
+        self.assertIsInstance(instances["rive_gauche"].contrainte, Ancrage)
+        self.assertEqual(
+            instances["rive_droite"].contrainte,
+            DecalageParallele("rive_gauche", (0, 2_880, 0)),
+        )
+        self.assertEqual(
+            instances["traverse_01"].contrainte.references,
+            ("rive_gauche", "rive_droite"),
+        )
+        self.assertEqual(
+            instances["solive_01_1"].contrainte.references,
+            ("traverse_01", "traverse_02"),
+        )
+        self.assertTrue(
+            all(
+                isinstance(instance.contrainte, EntreFaces)
+                for identifiant, instance in instances.items()
+                if identifiant.startswith(("traverse_", "solive_"))
+            )
+        )
+
+        articles_graphe = {
+            article.reference: quantite
+            for article, quantite in assemblage.articles().items()
+        }
+        self.assertEqual(
+            articles_graphe,
+            {
+                "MAD-120x240-L3000": 2,
+                "MAD-120x240-L2756": 5,
+                "SJI-60x240-L593": 36,
+            },
+        )
+        self.assertEqual(
+            [operation.identifiant for operation in assemblage.operations()],
+            [
+                "implantation",
+                "entre_rive_gauche_rive_droite",
+                "entre_traverse_01_traverse_02",
+                "entre_traverse_02_traverse_03",
+                "entre_traverse_03_traverse_04",
+                "entre_traverse_04_traverse_05",
+            ],
+        )
+        self.assertEqual(
+            [
+                operation.identifiant
+                for operation in AssemblageContraint(
+                    tuple(reversed(assemblage.instances))
+                ).operations()
+            ],
+            [operation.identifiant for operation in assemblage.operations()],
         )
 
     def test_manuel_assemblage_est_un_pdf_de_huit_pages(self) -> None:

@@ -8,15 +8,18 @@ les objets ``build123d`` déjà produits par le modèle.
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
 from pathlib import Path
 from textwrap import wrap
 from typing import Iterable, Sequence
 
 from build123d import Compound, Drawing
 
-from maison.structure import ElementPlancher
-from maison.structure.bois import Madrier, PoutreI
+from maison.assemblage import (
+    AssemblageContraint,
+    OperationAssemblage,
+    PiecePlacee,
+    formater_mm,
+)
 
 from .modele import LocalBatteries, creer_local_batteries
 
@@ -25,87 +28,14 @@ LARGEUR_PAGE = 595.28
 HAUTEUR_PAGE = 841.89
 
 
-@dataclass(frozen=True, slots=True)
-class EtapeAssemblage:
-    """Une opération dont les pièces proviennent du modèle CAO."""
-
-    numero: int
-    titre: str
-    instruction: str
-    nouvelles: tuple[ElementPlancher, ...]
-    deja_posees: tuple[ElementPlancher, ...]
+def poutres_du_plancher(local: LocalBatteries) -> tuple[PiecePlacee, ...]:
+    """Expose les pièces résolues par le graphe contraint du plancher."""
+    return local.plancher.assemblage_poutres().pieces
 
 
-def poutres_du_plancher(local: LocalBatteries) -> tuple[ElementPlancher, ...]:
-    """Sélectionne le périmètre du POC par type de pièce, pas par nom affiché."""
-    return tuple(
-        element
-        for element in local.plancher.elements()
-        if isinstance(element.piece, (Madrier, PoutreI))
-    )
-
-
-def etapes_assemblage(local: LocalBatteries) -> tuple[EtapeAssemblage, ...]:
-    """Déduit les groupes d'assemblage de la nature et de la position CAO."""
-    poutres = poutres_du_plancher(local)
-    madriers = tuple(e for e in poutres if isinstance(e.piece, Madrier))
-    solives = tuple(e for e in poutres if isinstance(e.piece, PoutreI))
-    longueur = local.geometrie.longueur_interieure
-
-    rives = tuple(e for e in madriers if abs(e.piece.longueur - longueur) < 1e-6)
-    traverses = tuple(e for e in madriers if e not in rives)
-
-    par_travee: dict[float, list[ElementPlancher]] = {}
-    for solive in solives:
-        debut_x = round(solive.forme.bounding_box().min.X, 6)
-        par_travee.setdefault(debut_x, []).append(solive)
-
-    groupes = [rives, traverses]
-    groupes.extend(
-        tuple(sorted(groupe, key=lambda e: e.forme.bounding_box().min.Y))
-        for _, groupe in sorted(par_travee.items())
-    )
-    largeur_hors_tout = max(e.forme.bounding_box().max.Y for e in rives) - min(
-        e.forme.bounding_box().min.Y for e in rives
-    )
-    titres = [
-        "Poser les poutres de rive",
-        "Mettre en place les traverses",
-        *(f"Remplir la travée {index}" for index in range(1, len(par_travee) + 1)),
-    ]
-    instructions = [
-        f"Mettre les {len(rives)} madriers de {_mm(longueur)} mm parallèles, "
-        f"faces extérieures espacées de {_mm(largeur_hors_tout)} mm.",
-        f"Présenter les {len(traverses)} traverses entre les rives et contrôler "
-        "leurs axes avant toute fixation.",
-    ]
-    for index, groupe in enumerate(groupes[2:], start=1):
-        instruction = (
-            f"Présenter les {len(groupe)} poutres en I de "
-            f"{_mm(groupe[0].piece.longueur)} mm entre les traverses "
-            f"{index} et {index + 1}"
-        )
-        if index == len(groupes) - 2:
-            instruction += ", puis contrôler l'ensemble"
-        instructions.append(instruction + ".")
-
-    deja_posees: tuple[ElementPlancher, ...] = ()
-    etapes: list[EtapeAssemblage] = []
-    for numero, (titre, instruction, nouvelles) in enumerate(
-        zip(titres, instructions, groupes), start=1
-    ):
-        etapes.append(
-            EtapeAssemblage(numero, titre, instruction, nouvelles, deja_posees)
-        )
-        deja_posees = (*deja_posees, *nouvelles)
-    return tuple(etapes)
-
-
-def _mm(valeur: float) -> str:
-    """Formate une cote CAO avec la typographie française du manuel."""
-    if abs(valeur - round(valeur)) < 1e-6:
-        return f"{round(valeur):,}".replace(",", " ")
-    return f"{valeur:,.1f}".replace(",", " ").replace(".", ",")
+def etapes_assemblage(local: LocalBatteries) -> tuple[OperationAssemblage, ...]:
+    """Expose la timeline déduite des contraintes de la CAO."""
+    return local.plancher.assemblage_poutres().operations()
 
 
 class _PDF:
@@ -246,7 +176,7 @@ class _PDF:
 
 
 def _segments_projection(
-    elements: Iterable[ElementPlancher],
+    elements: Iterable[PiecePlacee],
     *,
     dessus: bool,
 ) -> tuple[tuple[tuple[float, float], tuple[float, float]], ...]:
@@ -275,12 +205,12 @@ def _dessiner_projection(
     commandes: list[bytes],
     couches: Sequence[
         tuple[
-            Sequence[ElementPlancher],
+            Sequence[PiecePlacee],
             tuple[float, float, float],
             float,
         ]
     ],
-    toutes: Sequence[ElementPlancher],
+    toutes: Sequence[PiecePlacee],
     zone: tuple[float, float, float, float],
     *,
     dessus: bool,
@@ -315,7 +245,7 @@ def _dessiner_projection(
 
 def _entete(pdf: _PDF, commandes: list[bytes], page: int, titre: str) -> None:
     commandes.append(pdf.rectangle(0, 0, LARGEUR_PAGE, 12, (0.92, 0.43, 0.12)))
-    commandes.append(pdf.texte(40, 48, "LOCAL BATTERIES · MANUEL POUTRES", 9, True, (0.42, 0.45, 0.48)))
+    commandes.append(pdf.texte(40, 48, "ASSEMBLAGE CAO · MANUEL", 9, True, (0.42, 0.45, 0.48)))
     commandes.append(pdf.texte(40, 78, titre, 22, True))
     commandes.append(pdf.texte(520, 48, f"{page:02d}", 10, True, (0.42, 0.45, 0.48)))
 
@@ -350,14 +280,17 @@ def _lignes_texte(
     return y
 
 
-def exporter_manuel_assemblage(
-    local: LocalBatteries,
-    chemin: Path | str = Path("build/local_batteries/manuel_assemblage_poutres.pdf"),
+def exporter_manuel(
+    assemblage: AssemblageContraint,
+    chemin: Path | str,
+    *,
+    titre: str,
+    sous_titre: str,
 ) -> Path:
-    """Génère le POC PDF à partir des seules poutres de la CAO."""
+    """Rend un graphe d'assemblage quelconque sous forme de manuel PDF."""
     destination = Path(chemin)
-    poutres = poutres_du_plancher(local)
-    etapes = etapes_assemblage(local)
+    poutres = assemblage.pieces
+    etapes = assemblage.operations()
     largeur_hors_tout = max(e.forme.bounding_box().max.Y for e in poutres) - min(
         e.forme.bounding_box().min.Y for e in poutres
     )
@@ -371,13 +304,12 @@ def exporter_manuel_assemblage(
     commandes.append(pdf.rectangle(0, 0, LARGEUR_PAGE, 250, (0.09, 0.12, 0.15)))
     commandes.append(pdf.rectangle(40, 48, 72, 7, (0.92, 0.43, 0.12)))
     commandes.append(pdf.texte(40, 100, "MANUEL D'ASSEMBLAGE", 11, True, (0.92, 0.43, 0.12)))
-    commandes.append(pdf.texte(40, 142, "Plancher — poutres", 30, True, (1, 1, 1)))
+    commandes.append(pdf.texte(40, 142, titre, 24, True, (1, 1, 1)))
     commandes.append(
         pdf.texte(
             40,
             180,
-            f"Local batteries {_mm(longueur_hors_tout)} × "
-            f"{_mm(largeur_hors_tout)} mm",
+            sous_titre,
             18,
             False,
             (0.82, 0.85, 0.88),
@@ -394,12 +326,12 @@ def exporter_manuel_assemblage(
     for x, valeur, libelle in (
         (40, str(len(poutres)), "poutres CAO"),
         (214, str(len(etapes)), "opérations"),
-        (388, _mm(longueur_hors_tout), "mm hors-tout"),
+        (388, formater_mm(longueur_hors_tout), "mm hors-tout"),
     ):
         commandes.append(pdf.texte(x, 680, valeur, 24, True, (0.92, 0.43, 0.12)))
         commandes.append(pdf.texte(x, 702, libelle, 9, False, (0.35, 0.39, 0.43)))
-    commandes.append(pdf.texte(40, 760, "Généré directement depuis les solides build123d", 10, True))
-    commandes.append(pdf.texte(40, 780, "Périmètre : madriers et poutres en I du plancher uniquement", 9, False, (0.42, 0.45, 0.48)))
+    commandes.append(pdf.texte(40, 760, "Généré depuis le graphe de contraintes et les solides build123d", 10, True))
+    commandes.append(pdf.texte(40, 780, titre, 9, False, (0.42, 0.45, 0.48)))
     pdf.ajouter_page(commandes)
 
     # Inventaire et plan d'implantation
@@ -429,13 +361,15 @@ def exporter_manuel_assemblage(
         (60, 315, 475, 390),
         dessus=True,
     )
+    nombre_relations = sum(
+        len(instance.contrainte.references) for instance in assemblage.instances
+    )
     commandes.append(
         pdf.texte(
             65,
             735,
-            f"Trame lue sur la CAO : {local.plancher.nombre_traverses} "
-            f"traverses · {local.plancher.nombre_lignes_solives_i} lignes · "
-            f"entraxe {_mm(local.plancher.entraxe_solives_i)} mm",
+            f"Graphe CAO : {len(assemblage.instances)} pièces · "
+            f"{nombre_relations} relations orientées · {len(etapes)} opérations",
             9,
             True,
         )
@@ -444,8 +378,7 @@ def exporter_manuel_assemblage(
         pdf.texte(
             65,
             755,
-            f"Chaque poutre en I laisse un jeu de "
-            f"{_mm(local.plancher.jeu_ewh_par_about)} mm à chaque about.",
+            "Ordre et regroupements déduits des références de chaque contrainte.",
             9,
         )
     )
@@ -475,43 +408,8 @@ def exporter_manuel_assemblage(
         )
         commandes.append(pdf.rectangle(40, 615, 515, 118, (0.95, 0.96, 0.97)))
         commandes.append(pdf.texte(56, 642, "CONTRÔLES CAO", 9, True, (0.42, 0.45, 0.48)))
-        if etape.numero == 1:
-            piece = etape.nouvelles[0].piece
-            controles = (
-                f"{len(etape.nouvelles)} × madrier {_mm(piece.largeur)} × "
-                f"{_mm(piece.hauteur)} × {_mm(piece.longueur)} mm",
-                f"Hors-tout : {_mm(longueur_hors_tout)} × "
-                f"{_mm(largeur_hors_tout)} mm",
-            )
-        elif etape.numero == 2:
-            piece = etape.nouvelles[0].piece
-            axes = [
-                (e.forme.bounding_box().min.X + e.forme.bounding_box().max.X) / 2
-                for e in etape.nouvelles
-            ]
-            controles = (
-                f"{len(etape.nouvelles)} × madrier {_mm(piece.largeur)} × "
-                f"{_mm(piece.hauteur)} × {_mm(piece.longueur)} mm",
-                "Axes X : " + " · ".join(_mm(axe) for axe in axes) + " mm",
-            )
-        else:
-            boite = etape.nouvelles[0].forme.bounding_box()
-            piece = etape.nouvelles[0].piece
-            axes_y = sorted(
-                (e.forme.bounding_box().min.Y + e.forme.bounding_box().max.Y) / 2
-                for e in etape.nouvelles
-            )
-            entraxe = axes_y[1] - axes_y[0]
-            controles = (
-                f"{len(etape.nouvelles)} × {piece.modele}, longueur "
-                f"{_mm(piece.longueur)} mm",
-                f"Travée X : {_mm(boite.min.X)} à {_mm(boite.max.X)} mm · "
-                f"jeu d'about {_mm(local.plancher.jeu_ewh_par_about)} mm",
-                f"Axes Y : {_mm(axes_y[0])} à +{_mm(axes_y[-1])} mm · "
-                f"entraxe {_mm(entraxe)} mm",
-            )
         y_controle = 667
-        for controle in controles:
+        for controle in etape.controles:
             commandes.append(pdf.texte(58, y_controle, "• " + controle, 9))
             y_controle += 20
         commandes.append(pdf.texte(420, 758, "orange = à poser", 8, True, (0.82, 0.31, 0.06)))
@@ -519,8 +417,29 @@ def exporter_manuel_assemblage(
         _pied_page(pdf, commandes)
         pdf.ajouter_page(commandes)
 
-    pdf.ecrire(destination, "Manuel d'assemblage — poutres du local batteries")
+    pdf.ecrire(destination, f"Manuel d'assemblage — {titre}")
     return destination
+
+
+def exporter_manuel_assemblage(
+    local: LocalBatteries,
+    chemin: Path | str = Path("build/local_batteries/manuel_assemblage_poutres.pdf"),
+) -> Path:
+    """Adapte le graphe des poutres du local au renderer générique."""
+    assemblage = local.plancher.assemblage_poutres()
+    largeur = max(piece.forme.bounding_box().max.Y for piece in assemblage.pieces)
+    largeur -= min(piece.forme.bounding_box().min.Y for piece in assemblage.pieces)
+    longueur = max(piece.forme.bounding_box().max.X for piece in assemblage.pieces)
+    longueur -= min(piece.forme.bounding_box().min.X for piece in assemblage.pieces)
+    return exporter_manuel(
+        assemblage,
+        chemin,
+        titre="Plancher — madriers et poutres en I uniquement",
+        sous_titre=(
+            f"Local batteries {formater_mm(longueur)} × "
+            f"{formater_mm(largeur)} mm"
+        ),
+    )
 
 
 def main() -> None:

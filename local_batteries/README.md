@@ -106,7 +106,10 @@ Le document est écrit dans
 `build/local_batteries/manuel_assemblage_poutres.pdf`. Son périmètre est
 volontairement limité aux 43 poutres du plancher : 2 poutres longitudinales,
 5 traverses et 36 poutres en I. Les quantités, dimensions, positions et vues
-sont relues sur les solides `build123d`; ni les murs, ni les panneaux, ni
+sont relues sur le graphe de contraintes qui produit aussi les solides
+`build123d`, la BOM et les débits. Les six opérations ne sont pas écrites dans
+le générateur : elles sont déduites des références orientées et du regroupement
+des pièces partageant les mêmes appuis. Ni les murs, ni les panneaux, ni
 l'isolation, ni les connecteurs ne sont inclus. Le POC décrit donc
 l'implantation et l'ordre de pose, pas encore les gestes de fixation.
 

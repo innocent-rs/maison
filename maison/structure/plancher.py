@@ -5,6 +5,14 @@ from itertools import pairwise
 from math import ceil, isclose
 from build123d import Align, Box, Pos, Rot, Shape
 
+from maison.assemblage import (
+    Ancrage,
+    AssemblageContraint,
+    DecalageParallele,
+    EntreFaces,
+    PieceInstance,
+    PiecePlacee,
+)
 from maison.geometrie import GeometrieAFrame, GeometriePlancherRectangulaire
 from maison.nomenclature import LotBOM, Nomenclaturable
 from maison.structure.bois import Madrier, PoutreI, Tasseau
@@ -28,15 +36,7 @@ from maison.structure.panneaux import (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class ElementPlancher:
-    nom: str
-    piece: Nomenclaturable
-    forme: Shape
-    couleur: str
-
-    def article_bom(self):
-        return self.piece.article_bom()
+ElementPlancher = PiecePlacee
 
 
 @dataclass(frozen=True, slots=True)
@@ -677,38 +677,41 @@ class PlancherAFrame:
                     )
         return total
 
-    def elements(self) -> list[ElementPlancher]:
+    def assemblage_poutres(self) -> AssemblageContraint:
+        """Construit le graphe contraint des madriers et poutres en I."""
         largeur = self.geometrie.largeur_interieure
         longueur = self.geometrie.longueur_interieure
         demi_section = self.section_largeur / 2
-
         poutre_piece = Madrier(
             longueur=longueur,
             largeur=self.section_largeur,
             hauteur=self.section_hauteur,
         )
-        poutre = poutre_piece.construire()
-        elements: list[ElementPlancher] = []
-
-        # Les poutres longitudinales restent entières et sans entaille.
-        for nom, y_min in (
-            ("Poutre longitudinale gauche", -largeur / 2),
-            (
-                "Poutre longitudinale droite",
-                largeur / 2 - self.section_largeur,
+        instances: list[PieceInstance] = [
+            PieceInstance(
+                identifiant="rive_gauche",
+                nom="Poutre longitudinale gauche",
+                piece=poutre_piece,
+                contrainte=Ancrage((0, -largeur / 2 + demi_section, 0)),
+                couleur="saddlebrown",
             ),
-        ):
-            forme = Pos(0, y_min + demi_section, 0) * poutre
-            elements.append(ElementPlancher(nom, poutre_piece, forme, "saddlebrown"))
+            PieceInstance(
+                identifiant="rive_droite",
+                nom="Poutre longitudinale droite",
+                piece=poutre_piece,
+                contrainte=DecalageParallele(
+                    "rive_gauche",
+                    (0, largeur - self.section_largeur, 0),
+                ),
+                couleur="saddlebrown",
+            ),
+        ]
 
-        # Les traverses sont coupées entre les deux ailes de sabot. En leur
-        # absence, elles retrouvent toute la distance entre les faces bois.
         traverse_piece = Madrier(
             longueur=self.longueur_traverses,
             largeur=self.section_largeur,
             hauteur=self.section_hauteur,
         )
-        traverse = traverse_piece.construire()
         noms_traverses = (
             ("Traverse haute", "Traverse milieu", "Traverse basse")
             if self.nombre_traverses == 3
@@ -717,26 +720,65 @@ class PlancherAFrame:
                 for index in range(1, self.nombre_traverses + 1)
             )
         )
-        for nom, x in zip(noms_traverses, self.axes_traverses()):
-            forme = (
-                Pos(
-                    x,
-                    -largeur / 2
-                    + self.section_largeur
-                    + self.retrait_connecteur_par_about,
-                    0,
-                )
-                * Rot(0, 0, 90)
-                * traverse
-            )
-            elements.append(
-                ElementPlancher(
-                    nom,
-                    traverse_piece,
-                    forme,
-                    "burlywood",
+        for index, (nom, x) in enumerate(
+            zip(noms_traverses, self.axes_traverses()), start=1
+        ):
+            instances.append(
+                PieceInstance(
+                    identifiant=f"traverse_{index:02d}",
+                    nom=nom,
+                    piece=traverse_piece,
+                    contrainte=EntreFaces(
+                        "rive_gauche",
+                        "rive_droite",
+                        axe_portee="Y",
+                        position_transversale=x,
+                        jeu_about=self.retrait_connecteur_par_about,
+                    ),
+                    couleur="burlywood",
                 )
             )
+
+        if self.inclure_solives_i:
+            solive_i_piece = PoutreI(
+                longueur=self.longueur_solives_i,
+                hauteur=self.hauteur_solives_i,
+                largeur_membrure=self.largeur_membrure_solives_i,
+                modele=(
+                    f"STEICOjoist SJ{self.largeur_membrure_solives_i:g}/"
+                    f"{self.hauteur_solives_i:g}"
+                ),
+            )
+            niveau_bas_solives = self.niveau_haut_traverses - solive_i_piece.hauteur
+            for ligne, y in enumerate(self.axes_solives_i(), start=1):
+                for travee in range(1, self.nombre_traverses):
+                    instances.append(
+                        PieceInstance(
+                            identifiant=f"solive_{ligne:02d}_{travee}",
+                            nom=f"Solive en I {ligne:02d}.{travee}",
+                            piece=solive_i_piece,
+                            contrainte=EntreFaces(
+                                f"traverse_{travee:02d}",
+                                f"traverse_{travee + 1:02d}",
+                                axe_portee="X",
+                                position_transversale=y,
+                                niveau=niveau_bas_solives,
+                                jeu_about=self.jeu_ewh_par_about,
+                            ),
+                            couleur="goldenrod",
+                        )
+                    )
+        return AssemblageContraint(instances)
+
+    def elements(self) -> list[ElementPlancher]:
+        largeur = self.geometrie.largeur_interieure
+        demi_section = self.section_largeur / 2
+        assemblage_poutres = self.assemblage_poutres()
+        elements: list[ElementPlancher] = [
+            piece
+            for piece in assemblage_poutres.pieces
+            if isinstance(piece.piece, Madrier)
+        ]
 
         if self.inclure_connecteurs:
             sabot_piece = SabotSAI500_120_2(
@@ -783,21 +825,12 @@ class PlancherAFrame:
                     f"{self.hauteur_solives_i:g}"
                 ),
             )
-            solive_i = solive_i_piece.construire()
             niveau_bas_solives = self.niveau_haut_traverses - solive_i_piece.hauteur
-
-            for ligne, y in enumerate(self.axes_solives_i(), start=1):
-                for travee, x in enumerate(
-                    self.debuts_travees_solives_i(), start=1
-                ):
-                    elements.append(
-                        ElementPlancher(
-                            f"Solive en I {ligne:02d}.{travee}",
-                            solive_i_piece,
-                            Pos(x, y, niveau_bas_solives) * solive_i,
-                            "goldenrod",
-                        )
-                    )
+            elements.extend(
+                piece
+                for piece in assemblage_poutres.pieces
+                if isinstance(piece.piece, PoutreI)
+            )
 
             if self.inclure_connecteurs_solives_i:
                 sabot_ewh_piece = SabotEWH(
