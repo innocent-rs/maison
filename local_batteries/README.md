@@ -15,7 +15,7 @@ et vise une forte rigidité pour environ `1 000 kg` de batteries posées au sol.
 - Isonat Flex 55 de `145 mm` entre les âmes des poutres en I ;
 - 40 fonds de caisson en OSB 3 BD de `12 mm`, posés par le dessus ;
 - 8 tasseaux de rive Douglas de `60 × 40 × 593 mm` à gauche et à droite ;
-- 2 couches croisées d'OSB 3 rainuré-languetté de `22 mm` ;
+- 1 couche porteuse d'OSB 3 rainuré-languetté de `22 mm` ;
 - quatre murs en ossature Douglas `45 × 145 mm`, hauteur `2 575 mm` ;
 - une réservation de porte centrée de `900 × 2 150 mm`, sans fenêtre ;
 - isolation murale Isonat Flex 55 de `145 mm` ;
@@ -25,12 +25,10 @@ La traverse centrale passe sous l'axe du local. Les quatre travées de poutres
 en I ne font que `593 mm`, ce qui évite de faire travailler les SJ60/240 sur
 une portée proche des 3 m.
 
-La couche inférieure alterne ses joints d'about entre la traverse centrale et
-les deux traverses intermédiaires latérales. La couche supérieure est tournée
-à 90° et alterne son joint entre les solives situées à `Y = −830,4` et
-`+830,4 mm`. Il n'existe donc aucune ligne de joint continue d'une bande à
-l'autre. Le débit commun réemploie les chutes entre couches et demande 14
-dalles brutes de `2 500 × 675 × 22 mm`.
+La couche porteuse alterne ses joints d'about entre la traverse centrale et
+les deux traverses intermédiaires latérales. Chaque joint est ainsi porté et
+il n'existe aucune ligne de joint continue d'une bande à l'autre. Son débit
+demande 8 dalles brutes de `2 500 × 675 × 22 mm`.
 
 Les fonds OSB sont découpés en 40 morceaux de `593 × 265,8 mm`. Ils sont
 descendus dans les caissons par le dessus et reposent sur les membrures basses
@@ -76,11 +74,11 @@ chiffrage commun à 12 colis de quatre.
 
 L'ossature représente `106,00 m` utiles de Douglas `45 × 145 mm`, débités dans
 20 barres de 6 m avec un rendement de `88,33 %`. Le tarif de cette nouvelle
-famille de coupe reste centralisé dans `maison/prix.py`.
+famille de coupe reste centralisé dans `catalogues/prix.py`.
 
 La rigidité recherchée vient donc d'une trame serrée, de travées courtes et de
-la double peau croisée. Le modèle ne suppose pas que les deux couches d'OSB
-travaillent comme un panneau composite collé.
+la peau porteuse continue. Son interaction avec les solives et les assemblages
+devra être étudiée explicitement dans le futur modèle CalculiX.
 
 ## Utilisation
 
@@ -106,10 +104,10 @@ Le document est écrit dans
 `build/local_batteries/manuel_assemblage_poutres.pdf`. Il couvre désormais la
 totalité du plancher : 43 poutres, 10 sabots Simpson SAI,
 72 étriers Simpson EWH, 8 tasseaux de rive, 40 fonds OSB et 40 découpes
-d'isolant, puis 12 panneaux OSB porteurs et 10 panneaux OSB croisés. Les
+d'isolant, puis 12 panneaux OSB porteurs. Les
 quantités, dimensions, positions et vues sont relues sur le
 graphe de contraintes qui produit aussi les solides `build123d`, la BOM et les
-débits. Les treize opérations ne sont pas écrites dans le générateur : elles sont
+débits. Les douze opérations ne sont pas écrites dans le générateur : elles sont
 déduites des références orientées et du regroupement des pièces partageant la
 même intention de pose. Les textes et contrôles de fixation Simpson sont
 portés par les déclarations CAO. Les murs restent hors de cette édition du
@@ -126,6 +124,76 @@ Le sous-projet ne contient aucun prix. Les références communes sont résolues
 par `catalogues/prix.py`, y compris automatiquement pour toute longueur de madrier
 `120 × 240`, de STEICOjoist `SJ60/240`, de tasseau `60 × 40` ou de bois
 d'ossature `45 × 145`. Les CSV sont écrits dans `build/local_batteries/`.
+
+## POC CalculiX piloté par la CAO
+
+Le premier modèle éléments finis du plancher est généré directement depuis le
+`PlancherBois` du local : les cinq axes de traverses, les neuf axes de solives,
+les sections, les longueurs et la masse des composants ne sont pas ressaisis
+dans un fichier FreeCAD. Le framework commun écrit un jeu CalculiX `B31`, lance
+le solveur et contrôle l'équilibre entre charges et réactions :
+
+```console
+just local-batteries-simulation
+```
+
+La charge batterie est paramétrable sans modifier la CAO. Par exemple :
+
+```console
+just local-batteries-simulation -- --masse-batteries 1200 \
+  --empreinte-longueur 1200 --empreinte-largeur 800 \
+  --centre-x 1650 --centre-y 200
+```
+
+Les sorties sont écrites sous `build/local_batteries/simulation_calculix/` :
+
+- `plancher_local.inp` : entrée CalculiX autonome, avec les hypothèses en tête ;
+- `plancher_local.dat` et `plancher_local.frd` : résultats bruts, le `.frd`
+  contenant déplacements et contraintes et pouvant être ouvert dans FreeCAD
+  pour le post-traitement ;
+- `plancher_local_resultats.json` : flèche, réactions et erreur d'équilibre ;
+- `plancher_local.log` : journal complet du solveur.
+- `carte_fleche_verticale.png` : heat map en plan, avec poutres, appuis,
+  empreinte des batteries et point de flèche maximale ;
+- `deformee_3d.png` : ossature déformée et colorée, amplifiée `×150` par
+  défaut pour rendre une flèche millimétrique visible.
+
+L'amplification graphique ne modifie jamais les valeurs calculées :
+
+```console
+just local-batteries-simulation -- --amplification-deformee 250
+```
+
+Le shell Nix par défaut contient CalculiX 2.23. L'environnement graphique FEM,
+plus lourd, ajoute FreeCAD et Gmsh uniquement à la demande :
+
+```console
+nix develop .#fem
+freecad build/local_batteries/simulation_calculix/plancher_local.frd
+```
+
+Le cas par défaut place `1 000 kg` au centre sur une empreinte supposée de
+`1 000 × 1 000 mm`. Avec les poids propres du châssis, des deux OSB du plancher
+(fond de caisson de 12 mm et unique peau supérieure de 22 mm) et de l'isolant,
+la charge verticale atteint `15,438 kN`. CalculiX 2.23 donne une flèche élastique
+maximale de `1,504 mm` et quatre réactions symétriques de `3,860 kN`, avec une
+erreur d'équilibre de `0,00024 N`.
+
+Ce résultat est une première borne de raideur : les croisements SAI/EWH sont
+parfaitement rigides et l'OSB distribue les charges sans contribuer à la
+rigidité. Les rigidités `EI = 709 kN·m²` et `GA = 3,18 MN` de la SJ60/240 sont
+reproduites par une section orthotrope équivalente. Les murs, les fondations,
+le glissement et la résistance des connecteurs, le fluage, les vibrations, les
+combinaisons ELU, le poinçonnement local de l'OSB et les vérifications au feu
+sont exclus. La valeur de `1,504 mm` ne constitue donc ni une charge admissible
+ni une validation de construction.
+
+La heat map automatique montre où le plancher se déplace le plus, pas où une
+rupture est prédite. Le `.frd` contient aussi le champ de contraintes `S`, que
+FreeCAD peut afficher interactivement. Une véritable carte « où cela flanche »
+devra représenter un taux de travail calculé à partir des résistances
+caractéristiques du Douglas, des SJ60, de l'OSB et des SAI/EWH, avec les
+combinaisons ELU applicables.
 
 ## Points à figer avant exécution
 

@@ -17,10 +17,10 @@ def lots_decoupes_osb(
     """Regroupe les découpes par couche, format et orientation de pose."""
     lots: Counter[tuple[str, float, float, float, str]] = Counter()
     for element in local.elements():
-        if not element.nom.startswith(("OSB inférieur", "OSB supérieur")):
+        if not element.nom.startswith("OSB porteur"):
             continue
-        couche = "inférieure" if "inférieur" in element.nom else "supérieure"
-        orientation = "X" if couche == "inférieure" else "Y"
+        couche = "porteuse"
+        orientation = "X"
         piece = element.piece
         lots[(couche, piece.longueur, piece.largeur, piece.epaisseur, orientation)] += 1
     return tuple(
@@ -112,14 +112,13 @@ def plan_debit_osb(local: LocalBatteries) -> PlanDebit:
     """Optimise les coupes de 600 mm de large dans la longueur des dalles."""
     pieces = []
     for element in local.elements():
-        if not element.nom.startswith(("OSB inférieur", "OSB supérieur")):
+        if not element.nom.startswith("OSB porteur"):
             continue
         piece = element.piece
-        couche = "INF" if "inférieur" in element.nom else "SUP"
         numero = element.nom.rsplit(" ", 1)[-1]
         pieces.append(
             PieceDebit(
-                reference_bom=f"OSB-{couche}-{numero}",
+                reference_bom=f"OSB-PORTEUR-{numero}",
                 designation=element.nom,
                 longueur_mm=piece.longueur,
             )

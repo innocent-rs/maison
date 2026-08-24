@@ -20,7 +20,7 @@ def main() -> None:
         f"{plancher.nombre_lignes_solives_i} lignes, "
         f"entraxe {plancher.entraxe_solives_i:.1f} mm"
     )
-    print("Peau supérieure : 2 couches croisées d’OSB 3 R+L de 22 mm")
+    print("Plancher supérieur : 1 couche d’OSB 3 R+L de 22 mm")
     print("Isolation : Isonat Flex 55 de 145 mm entre les poutres en I")
     print(
         "Fonds de caisson : OSB 3 BD de 12 mm sur membrures basses "

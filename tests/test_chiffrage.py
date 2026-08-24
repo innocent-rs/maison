@@ -232,7 +232,7 @@ class TestChiffrage(unittest.TestCase):
         self.assertEqual(len(chiffrage.plans_debit), 3)
         self.assertEqual(
             chiffrage.sous_total_renseigne_ttc_eur,
-            Decimal("4920.96"),
+            Decimal("4732.30"),
         )
 
     def test_plancher_osb_achete_quatorze_dalles_et_trois_boites(self) -> None:

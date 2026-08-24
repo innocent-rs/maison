@@ -13,14 +13,14 @@
       devShells = forAllSystems (system:
         let
           pkgs = import nixpkgs { inherit system; };
-        in {
-          default = pkgs.mkShell {
-            packages = with pkgs; [
+          mkHomeShell = extraPackages: pkgs.mkShell {
+            packages = (with pkgs; [
               python312
               uv
               just
               curl
-            ];
+              calculix-ccx
+            ]) ++ extraPackages;
 
             # Bibliothèques chargées dynamiquement par les wheels OCP/OpenGL.
             LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
@@ -52,6 +52,11 @@
               echo "Environnement prêt. Lancez : python -m ocp_vscode --tree_width 240"
             '';
           };
+        in {
+          default = mkHomeShell [ ];
+          # FreeCAD et Gmsh sont optionnels : le .inp et le .frd restent
+          # générables en CI avec le shell par défaut beaucoup plus léger.
+          fem = mkHomeShell (with pkgs; [ freecad gmsh ]);
         });
     };
 }

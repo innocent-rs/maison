@@ -68,6 +68,11 @@ local-batteries-bom:
 local-batteries-manuel:
     python -m local_batteries.manuel_assemblage
 
+# Calcule le POC élastique du plancher; options après `--`, par exemple
+# `just local-batteries-simulation -- --empreinte-longueur 1200`.
+local-batteries-simulation *args:
+    python -m local_batteries.simulation {{args}}
+
 # Lance les tests du modèle paramétrique
 test:
     python -m unittest discover -s tests

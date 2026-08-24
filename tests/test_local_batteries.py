@@ -59,10 +59,10 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertTrue(
             all(isinstance(element.piece, (Madrier, PoutreI)) for element in poutres)
         )
-        self.assertEqual(len(elements), 235)
+        self.assertEqual(len(elements), 225)
         self.assertEqual(
             [len(etape.nouvelles) for etape in etapes_assemblage(self.local)],
-            [2, 10, 5, 72, 9, 9, 9, 9, 8, 40, 40, 12, 10],
+            [2, 10, 5, 72, 9, 9, 9, 9, 8, 40, 40, 12],
         )
 
     def test_sabots_osb_et_isolant_forment_une_chaine_de_dependances(self) -> None:
@@ -99,10 +99,6 @@ class TestLocalBatteries(unittest.TestCase):
             "isolant_local_01_1",
             instances["osb_porteur_01"].contrainte.references,
         )
-        self.assertIn(
-            "osb_porteur_01",
-            instances["osb_repartition_01"].contrainte.references,
-        )
         self.assertEqual(
             [operation.identifiant for operation in assemblage.operations()],
             [
@@ -118,7 +114,6 @@ class TestLocalBatteries(unittest.TestCase):
                 "fonds_osb",
                 "isolant_caissons",
                 "osb_porteur",
-                "osb_repartition",
             ],
         )
 
@@ -206,7 +201,7 @@ class TestLocalBatteries(unittest.TestCase):
             solive.forme.joints["debut"],
         )
 
-    def test_manuel_assemblage_est_un_pdf_de_quinze_pages(self) -> None:
+    def test_manuel_assemblage_est_un_pdf_de_quatorze_pages(self) -> None:
         with TemporaryDirectory() as dossier:
             chemin = exporter_manuel_assemblage(
                 self.local,
@@ -216,37 +211,38 @@ class TestLocalBatteries(unittest.TestCase):
 
         self.assertTrue(contenu.startswith(b"%PDF-1.4"))
         self.assertTrue(contenu.rstrip().endswith(b"%%EOF"))
-        self.assertEqual(contenu.count(b"/Type /Page "), 15)
+        self.assertEqual(contenu.count(b"/Type /Page "), 14)
 
-    def test_double_couche_osb_croisee(self) -> None:
+    def test_couche_osb_porteuse_unique(self) -> None:
         osb = [
             element
             for element in self.local.elements()
-            if element.nom.startswith(("OSB inférieur", "OSB supérieur"))
+            if element.nom.startswith("OSB porteur")
         ]
-        couche_inferieure = [e for e in osb if "inférieur" in e.nom]
-        couche_superieure = [e for e in osb if "supérieur" in e.nom]
 
-        self.assertEqual(len(couche_inferieure), 12)
-        self.assertEqual(len(couche_superieure), 10)
-        self.assertTrue(
-            all(e.forme.bounding_box().min.Z == 240 for e in couche_inferieure)
+        self.assertEqual(len(osb), 12)
+        self.assertFalse(
+            any(
+                element.nom.startswith("OSB supérieur")
+                for element in self.local.elements()
+            )
         )
         self.assertTrue(
-            all(e.forme.bounding_box().min.Z == 262 for e in couche_superieure)
+            all(e.forme.bounding_box().min.Z == 240 for e in osb)
+        )
+        self.assertTrue(
+            all(e.forme.bounding_box().max.Z == 262 for e in osb)
         )
 
     def test_joints_osb_sont_en_quinconce_et_sur_les_appuis(self) -> None:
         osb = [
             element
             for element in self.local.elements()
-            if element.nom.startswith(("OSB inférieur", "OSB supérieur"))
+            if element.nom.startswith("OSB porteur")
         ]
-        couche_inferieure = [e for e in osb if "inférieur" in e.nom]
-        couche_superieure = [e for e in osb if "supérieur" in e.nom]
 
         joints_x_par_rangee: dict[float, set[float]] = {}
-        for element in couche_inferieure:
+        for element in osb:
             boite = element.forme.bounding_box()
             axe_y = round((boite.min.Y + boite.max.Y) / 2, 6)
             joints = joints_x_par_rangee.setdefault(axe_y, set())
@@ -260,27 +256,6 @@ class TestLocalBatteries(unittest.TestCase):
             ({1_500.0}, {781.0, 2_219.0}, {1_500.0}, {781.0, 2_219.0}, {1_500.0}),
         )
 
-        joints_y_par_colonne: dict[float, set[float]] = {}
-        for element in couche_superieure:
-            boite = element.forme.bounding_box()
-            axe_x = round((boite.min.X + boite.max.X) / 2, 6)
-            joints = joints_y_par_colonne.setdefault(axe_x, set())
-            joints.update(
-                round(y, 6)
-                for y in (boite.min.Y, boite.max.Y)
-                if -1_500 < y < 1_500
-            )
-        self.assertEqual(
-            tuple(joints_y_par_colonne.values()),
-            (
-                {830.4},
-                {-830.4},
-                {830.4},
-                {-830.4},
-                {830.4},
-            ),
-        )
-
     def test_bom_achats_remplace_les_decoupes_par_dalles_brutes(self) -> None:
         lignes = self.local.nomenclature_achats().lignes
         references = {ligne.article.reference: ligne.quantite for ligne in lignes}
@@ -288,18 +263,20 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertFalse(
             any(reference.startswith("OSB-PLANCHER-") for reference in references)
         )
-        self.assertEqual(references["OSB-RL-675x2500x22"], 14)
+        self.assertEqual(references["OSB-RL-675x2500x22"], 8)
+        self.assertEqual(references["KLIMAS-KMWHT-5X60"], 600)
+        self.assertNotIn("KLIMAS-KMWHT-5X80", references)
         self.assertEqual(references["OSB-BD-1196x2800x12"], 13)
         self.assertEqual(references["ISOL-ISONAT-FLEX55-145x580x1220"], 47)
         self.assertEqual(references["SPAX-0191010400355"], 1_270)
         self.assertEqual(references["TAS-60x40-L593"], 8)
         self.assertEqual(references["KLIMAS-KMWHT-6X160"], 24)
 
-    def test_plan_debit_osb_tient_dans_quatorze_dalles(self) -> None:
+    def test_plan_debit_osb_tient_dans_huit_dalles(self) -> None:
         plan = plan_debit_osb(self.local)
 
-        self.assertEqual(plan.nombre_barres, 14)
-        self.assertEqual(plan.nombre_pieces, 22)
+        self.assertEqual(plan.nombre_barres, 8)
+        self.assertEqual(plan.nombre_pieces, 12)
         self.assertTrue(all(barre.chute_mm >= 0 for barre in plan.barres))
 
     def test_isolant_remplit_les_quarante_caissons(self) -> None:
@@ -364,8 +341,8 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertEqual(max(e.forme.bounding_box().max.X for e in murs), 3_012)
         self.assertEqual(min(e.forme.bounding_box().min.Y for e in murs), -1_512)
         self.assertEqual(max(e.forme.bounding_box().max.Y for e in murs), 1_512)
-        self.assertEqual(min(e.forme.bounding_box().min.Z for e in murs), 284)
-        self.assertEqual(max(e.forme.bounding_box().max.Z for e in murs), 2_859)
+        self.assertEqual(min(e.forme.bounding_box().min.Z for e in murs), 262)
+        self.assertEqual(max(e.forme.bounding_box().max.Z for e in murs), 2_837)
 
     def test_facade_ne_comporte_qu_une_porte_standard(self) -> None:
         murs = self.local.murs

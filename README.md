@@ -75,7 +75,7 @@ de rive : parfaitement rigides ou articulées.
 
 Les charges sont désormais réparties par largeur tributaire. Le cas `G`
 comprend les poids propres des éléments porteurs et des couches réellement
-actives : OSB inférieur `12 mm`, Isonat `145 mm` et OSB supérieur `22 mm`.
+actives : fonds OSB `12 mm`, Isonat `145 mm` et OSB porteur `22 mm`.
 Le cas `Q` utilise par défaut une hypothèse modifiable de `1,5 kN/m²`, et le cas
 `G+Q` les additionne sans pondération. Cette valeur est une hypothèse de travail
 à confirmer avec la catégorie d'usage et l'annexe nationale applicables ; une
@@ -105,6 +105,21 @@ charges concentrées réglementaires, efforts et résistances des assemblages,
 stabilité, feu et combinaisons ELU ne sont pas encore vérifiés. Ce modèle
 linéaire reste donc un outil de conception ; il ne remplace pas une note de
 calcul établie ou validée par un ingénieur structure.
+
+Pour le local batteries, un second chemin de calcul génère désormais un modèle
+CalculiX directement depuis la trame CAO du plancher :
+
+```console
+just local-batteries-simulation
+```
+
+Le `.inp`, le `.frd` ouvrable dans FreeCAD et le résumé JSON sont produits dans
+`build/local_batteries/simulation_calculix/`, avec une heat map PNG de la
+flèche et une vue 3D déformée amplifiée. Le shell `nix develop .#fem`
+ajoute FreeCAD et Gmsh au CalculiX déjà présent dans le shell par défaut. Le POC
+est un calcul élastique comparatif sous une empreinte batterie paramétrable ;
+ses hypothèses et limites sont détaillées dans
+[local_batteries/README.md](local_batteries/README.md#poc-calculix-piloté-par-la-cao).
 
 ### Nomenclature et chiffrage
 
@@ -142,8 +157,8 @@ différent. Les `InstructionAssemblage` attachent les gestes et contrôles aux
 objets CAO. Le manuel PDF devient ainsi un renderer de cette même source au
 lieu de maintenir une liste d'étapes séparée. Pour le local batteries, le
 graphe couvre les SAI, les traverses, les EWH, les solives, les tasseaux, les
-fonds OSB, l'isolant, la couche OSB porteuse puis la couche croisée, dans cet
-ordre déduit des contraintes et des recouvrements géométriques.
+fonds OSB, l'isolant puis l'unique couche OSB porteuse, dans cet ordre déduit
+des contraintes et des recouvrements géométriques.
 
 ### Chiffrage par lot
 

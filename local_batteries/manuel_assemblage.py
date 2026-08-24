@@ -42,7 +42,7 @@ def exporter_manuel_assemblage(
     return exporter_manuel(
         assemblage,
         chemin,
-        titre="Plancher complet — structure, isolation et double OSB",
+        titre="Plancher complet — structure, isolation et OSB porteur",
         sous_titre=(
             f"Local batteries {formater_mm(longueur)} × "
             f"{formater_mm(largeur)} mm"
