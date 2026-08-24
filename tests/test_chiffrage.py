@@ -216,6 +216,10 @@ class TestChiffrage(unittest.TestCase):
         self.assertIs(TARIFS["MAD-120x240-L3000"], TARIFS["MAD-120x240-L2756"])
         self.assertIs(TARIFS["SJI-60x240-L593"], TARIFS["SJI-60x240-L2212"])
         self.assertIs(TARIFS["TAS-60x40-L593"], TARIFS["TAS-60x40-L2212"])
+        self.assertIs(
+            TARIFS["BO-MOB-45x145-L190"],
+            TARIFS["BO-MOB-45x145-L3000"],
+        )
 
     def test_local_batteries_utilise_le_chiffrage_commun(self) -> None:
         chiffrage = Chiffrage(
@@ -225,10 +229,10 @@ class TestChiffrage(unittest.TestCase):
         )
 
         self.assertTrue(chiffrage.est_complet)
-        self.assertEqual(len(chiffrage.plans_debit), 2)
+        self.assertEqual(len(chiffrage.plans_debit), 3)
         self.assertEqual(
             chiffrage.sous_total_renseigne_ttc_eur,
-            Decimal("3396.64"),
+            Decimal("4920.96"),
         )
 
     def test_plancher_osb_achete_quatorze_dalles_et_trois_boites(self) -> None:

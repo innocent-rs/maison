@@ -1,4 +1,4 @@
-"""Exporte les nomenclatures du plancher du local batteries."""
+"""Exporte les nomenclatures du plancher et des murs du local batteries."""
 
 from pathlib import Path
 

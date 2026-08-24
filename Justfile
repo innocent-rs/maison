@@ -56,7 +56,7 @@ kill:
 run:
     python main.py
 
-# Affiche le plancher 3 × 3 m du local batteries
+# Affiche le local batteries 3 × 3 m avec son plancher et ses murs
 local-batteries:
     python -m local_batteries.main
 

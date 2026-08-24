@@ -62,6 +62,21 @@ TARIF_TASSEAU_DOUGLAS_60X40 = Tarif.en_lots_lineaires(
     ),
 )
 
+TARIF_BOIS_OSSATURE_DOUGLAS_45X145 = Tarif.en_barres(
+    "37.50",
+    reference_achat="DOUGLAS-MOB-45x145-L6000",
+    designation_achat="Bois d'ossature Douglas CL2 45 × 145 mm — L 6 000 mm",
+    longueur_commerciale_mm=6_000,
+    trait_scie_mm=5,
+    fournisseur="Matériaux Naturels",
+    date_tarif="2026-08-24",
+    url=(
+        "https://www.materiaux-naturels.fr/produit/832-"
+        "bois-d-ossature-douglas-massif-rabote"
+    ),
+    note="Barre de 6 m ; prix calculé depuis 6,25 € TTC/ml",
+)
+
 
 TARIFS_EXACTS: dict[str, Tarif] = {
     "ARB-120x250-A60-LD4126_51": Tarif(
@@ -184,6 +199,18 @@ TARIFS_EXACTS: dict[str, Tarif] = {
             "entraxe maximal 300 mm"
         ),
     ),
+    "KLIMAS-KMWHT-6X100": Tarif.par_conditionnement(
+        "14.20",
+        quantite=100,
+        conditionnement="boîte de 100",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-24",
+        url=(
+            "https://www.materiaux-naturels.fr/produit-decl/9003-"
+            "vis-torx-construction-bois-charpente-6x200"
+        ),
+        note="Déclinaison 6 × 100 mm du tarif Klimas KMWHT",
+    ),
     "KLIMAS-KMWHT-5X60": Tarif.par_conditionnement(
         "10.80",
         quantite=200,
@@ -217,5 +244,6 @@ TARIFS = CatalogueTarifs(
         (r"MAD-120x240-L[0-9]+(?:_[0-9]+)?", TARIF_DOUGLAS_CONTRECOLLE_120X240),
         (r"SJI-60x240-L[0-9]+(?:_[0-9]+)?", TARIF_STEICOJOIST_SJ60X240),
         (r"TAS-60x40-L[0-9]+(?:_[0-9]+)?", TARIF_TASSEAU_DOUGLAS_60X40),
+        (r"BO-MOB-45x145-L[0-9]+(?:_[0-9]+)?", TARIF_BOIS_OSSATURE_DOUGLAS_45X145),
     ),
 )

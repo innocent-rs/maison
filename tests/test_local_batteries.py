@@ -1,7 +1,11 @@
 import unittest
 
 from local_batteries import creer_local_batteries
-from local_batteries.debit import calepinage_fonds_caissons, plan_debit_osb
+from local_batteries.debit import (
+    calepinage_fonds_caissons,
+    calepinage_osb_murs,
+    plan_debit_osb,
+)
 
 
 class TestLocalBatteries(unittest.TestCase):
@@ -101,9 +105,9 @@ class TestLocalBatteries(unittest.TestCase):
             any(reference.startswith("OSB-PLANCHER-") for reference in references)
         )
         self.assertEqual(references["OSB-RL-675x2500x22"], 14)
-        self.assertEqual(references["OSB-BD-1196x2800x12"], 3)
-        self.assertEqual(references["ISOL-ISONAT-FLEX55-145x580x1220"], 10)
-        self.assertEqual(references["SPAX-0191010400355"], 320)
+        self.assertEqual(references["OSB-BD-1196x2800x12"], 13)
+        self.assertEqual(references["ISOL-ISONAT-FLEX55-145x580x1220"], 47)
+        self.assertEqual(references["SPAX-0191010400355"], 1_270)
         self.assertEqual(references["TAS-60x40-L593"], 8)
         self.assertEqual(references["KLIMAS-KMWHT-6X160"], 24)
 
@@ -166,6 +170,114 @@ class TestLocalBatteries(unittest.TestCase):
                 for element in tasseaux
             )
         )
+
+    def test_ossature_bois_forme_un_volume_unique_de_trois_metres(self) -> None:
+        murs = self.local.murs.elements()
+
+        self.assertEqual(self.local.murs.hauteur_ossature, 2_575)
+        self.assertEqual(self.local.murs.hauteur_libre_ossature, 2_440)
+        self.assertEqual(min(e.forme.bounding_box().min.X for e in murs), -12)
+        self.assertEqual(max(e.forme.bounding_box().max.X for e in murs), 3_012)
+        self.assertEqual(min(e.forme.bounding_box().min.Y for e in murs), -1_512)
+        self.assertEqual(max(e.forme.bounding_box().max.Y for e in murs), 1_512)
+        self.assertEqual(min(e.forme.bounding_box().min.Z for e in murs), 284)
+        self.assertEqual(max(e.forme.bounding_box().max.Z for e in murs), 2_859)
+
+    def test_facade_ne_comporte_qu_une_porte_standard(self) -> None:
+        murs = self.local.murs
+        panneaux = [
+            element
+            for element in murs.elements()
+            if element.nom.startswith("Façade porte OSB")
+        ]
+
+        self.assertEqual(murs.largeur_porte_tableau, 900)
+        self.assertEqual(murs.hauteur_porte_tableau, 2_150)
+        self.assertEqual(len(panneaux), 6)
+        self.assertFalse(
+            any("fenêtre" in element.nom.lower() for element in murs.elements())
+        )
+        for element in panneaux:
+            boite = element.forme.bounding_box()
+            self.assertTrue(
+                boite.max.X <= murs.debut_porte
+                or boite.min.X >= murs.fin_porte
+                or boite.min.Z >= murs.niveau_sol + murs.hauteur_porte_tableau
+            )
+
+    def test_debit_osb_mural_reemploie_les_chutes_au_dessus_de_la_porte(self) -> None:
+        plan = calepinage_osb_murs(self.local)
+
+        self.assertEqual(len(plan), 10)
+        self.assertEqual(sum(len(decoupes) for _, decoupes in plan), 16)
+        self.assertEqual(
+            sum(
+                reference.startswith("PORTE-HAUT")
+                for _, decoupes in plan
+                for _, _, reference in decoupes
+            ),
+            4,
+        )
+
+    def test_tous_les_joints_verticaux_osb_muraux_sont_sur_un_montant(self) -> None:
+        for nom, axe, minimum, maximum in (
+            ("Mur arrière", "X", 0, 3_000),
+            ("Mur gauche", "Y", -1_500, 1_500),
+            ("Mur droit", "Y", -1_500, 1_500),
+        ):
+            panneaux = [
+                element
+                for element in self.local.murs.elements()
+                if element.nom.startswith(f"{nom} OSB")
+            ]
+            montants = [
+                element.forme.bounding_box()
+                for element in self.local.murs.elements()
+                if element.nom.startswith(f"{nom} montant")
+            ]
+            joints = {
+                coordonnee
+                for panneau in panneaux
+                for coordonnee in (
+                    getattr(panneau.forme.bounding_box().min, axe),
+                    getattr(panneau.forme.bounding_box().max, axe),
+                )
+                if minimum < coordonnee < maximum
+            }
+            for joint in joints:
+                self.assertTrue(
+                    any(
+                        getattr(montant.min, axe) <= joint
+                        <= getattr(montant.max, axe)
+                        for montant in montants
+                    ),
+                    f"joint {nom} à {joint:g} mm sans montant",
+                )
+
+    def test_isolation_murale_utilise_trente_sept_panneaux(self) -> None:
+        isolants = [
+            element
+            for element in self.local.murs.elements()
+            if " isolant " in element.nom
+        ]
+
+        self.assertEqual(len(isolants), 48)
+        self.assertEqual(self.local.murs.nombre_panneaux_isolant_achetes, 37)
+
+    def test_bom_ossature_est_debite_dans_la_famille_commune(self) -> None:
+        references = {
+            ligne.article.reference: ligne.quantite
+            for ligne in self.local.nomenclature_achats().lignes
+        }
+
+        self.assertEqual(references["BO-MOB-45x145-L3000"], 5)
+        self.assertEqual(references["BO-MOB-45x145-L2710"], 6)
+        self.assertEqual(references["BO-MOB-45x145-L2440"], 27)
+        self.assertEqual(references["BO-MOB-45x145-L2105"], 2)
+        self.assertEqual(references["BO-MOB-45x145-L1050"], 2)
+        self.assertEqual(references["BO-MOB-45x145-L990"], 2)
+        self.assertEqual(references["BO-MOB-45x145-L190"], 3)
+        self.assertEqual(references["KLIMAS-KMWHT-6X100"], 200)
 
 
 if __name__ == "__main__":

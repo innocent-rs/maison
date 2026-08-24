@@ -1,4 +1,4 @@
-"""Affiche le plancher du local batteries dans le viewer OCP."""
+"""Affiche le plancher et les murs du local batteries dans le viewer OCP."""
 
 from ocp_vscode import show
 
@@ -26,6 +26,11 @@ def main() -> None:
         "Fonds de caisson : OSB 3 BD de 12 mm sur membrures basses "
         "et tasseaux de rive"
     )
+    print(
+        "Murs : ossature Douglas 45 × 145 mm, H 2 575 mm, "
+        "OSB extérieur et Isonat 145 mm"
+    )
+    print("Entrée : une réservation centrée de 900 × 2 150 mm, sans fenêtre")
     print(f"Cible de charge batteries : {local.charge_batteries_kg:.0f} kg")
 
     show(

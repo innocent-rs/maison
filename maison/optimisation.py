@@ -155,10 +155,15 @@ def optimiser_debit(
     for nombre_barres in range(borne_basse, len(pieces_triees) + 1):
         contenu: list[list[PieceDebit]] = [[] for _ in range(nombre_barres)]
         capacites_restantes = [capacite for _ in range(nombre_barres)]
+        etats_impossibles: set[tuple[int, tuple[Decimal, ...]]] = set()
 
         def placer(index: int) -> bool:
             if index == len(pieces_triees):
                 return True
+
+            etat = (index, tuple(sorted(capacites_restantes)))
+            if etat in etats_impossibles:
+                return False
 
             piece = pieces_triees[index]
             longueur = longueurs_effectives[index]
@@ -180,6 +185,7 @@ def optimiser_debit(
                 contenu[numero].pop()
                 if restante == capacite:
                     break
+            etats_impossibles.add(etat)
             return False
 
         if placer(0):

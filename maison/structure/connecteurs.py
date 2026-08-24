@@ -373,6 +373,25 @@ class VisTasseauKlimas6x160:
 
 
 @dataclass(frozen=True, slots=True)
+class VisOssatureKlimas6x100:
+    """Vis de montage des montants, lisses et renforts d'ossature bois."""
+
+    diametre: float = 6.0
+    longueur: float = 100.0
+    materiau: str = "Acier carbone galvanisé"
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference="KLIMAS-KMWHT-6X100",
+            designation="Vis structurelle Klimas KMWHT 6 × 100 mm",
+            categorie="Fixation / vis ossature bois",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.diametre,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class VisPlancherOSB5x60:
     """Vis Klimas à filetage partiel pour le plancher porteur en OSB de 22 mm."""
 

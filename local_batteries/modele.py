@@ -17,6 +17,8 @@ from maison.structure import (
 )
 from maison.structure.panneaux import PanneauPlancherOSB
 
+from .murs import MursLocalBatteries
+
 
 @dataclass(frozen=True, slots=True)
 class DecoupeIsonatLocalBatteries:
@@ -61,9 +63,10 @@ class DecoupeIsonatLocalBatteries:
 
 @dataclass(frozen=True, slots=True)
 class LocalBatteries:
-    """Sous-ensemble constructif du plancher, hors murs et fondations."""
+    """Local technique monobloc, hors toiture et fondations."""
 
     plancher: PlancherAFrame
+    murs: MursLocalBatteries
     charge_batteries_kg: float = 1_000.0
     nombre_dalles_osb_achetees: int = 14
     nombre_panneaux_isolant_achetes: int = 10
@@ -84,6 +87,8 @@ class LocalBatteries:
             raise ValueError("le plancher renforcé exige les poutres en I")
         if self.plancher.entraxe_solives_i > 300:
             raise ValueError("l'entraxe des poutres en I ne doit pas dépasser 300 mm")
+        if self.murs.niveau_sol != self.plancher.niveau_haut_traverses + 44:
+            raise ValueError("les murs doivent reposer sur la double peau du plancher")
 
     @property
     def geometrie(self) -> GeometriePlancherRectangulaire:
@@ -205,6 +210,7 @@ class LocalBatteries:
             *self.plancher.elements(),
             *self._elements_isolant(),
             *self._elements_osb(),
+            *self.murs.elements(),
         ]
 
     def pieces_bom(self) -> list[Nomenclaturable]:
@@ -212,6 +218,7 @@ class LocalBatteries:
             *self.plancher.pieces_bom(),
             *self._elements_isolant(),
             *self._elements_osb(),
+            *self.murs.pieces_bom(),
             LotBOM(
                 VisPlancherOSB5x60().article_bom(),
                 self.nombre_vis_couche_inferieure,
@@ -231,7 +238,9 @@ class LocalBatteries:
                 (
                     "OSB-PLANCHER-",
                     "OSB-FOND-",
+                    "OSB-MUR-",
                     "ISOL-DECOUPE-",
+                    "ISOL-MUR-",
                 )
             )
         ]
@@ -256,11 +265,13 @@ class LocalBatteries:
                 ),
                 LotBOM(
                     dalle_fonds_caissons.article_bom(),
-                    self.plancher.nombre_dalles_brutes_osb_caissons,
+                    self.plancher.nombre_dalles_brutes_osb_caissons
+                    + self.murs.nombre_panneaux_osb_achetes,
                 ),
                 LotBOM(
                     isolant.article_bom(),
-                    self.nombre_panneaux_isolant_achetes,
+                    self.nombre_panneaux_isolant_achetes
+                    + self.murs.nombre_panneaux_isolant_achetes,
                 ),
             )
         )
@@ -295,4 +306,7 @@ def creer_local_batteries() -> LocalBatteries:
         inclure_isolant_caissons=False,
         inclure_osb_plancher=False,
     )
-    return LocalBatteries(plancher)
+    murs = MursLocalBatteries(
+        niveau_sol=plancher.niveau_haut_traverses + 2 * 22,
+    )
+    return LocalBatteries(plancher, murs)

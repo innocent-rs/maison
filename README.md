@@ -4,8 +4,9 @@ Petit projet Python de CAO paramétrique avec
 [build123d](https://build123d.readthedocs.io/) et visualisation dans Firefox via
 le serveur web autonome de `ocp_vscode`.
 
-Le plancher indépendant du local technique batteries (`3 × 3 m`, `9 m²`) est
-décrit dans [local_batteries/README.md](local_batteries/README.md).
+Le local technique batteries indépendant (`3 × 3 m`, `9 m²`), avec son
+plancher renforcé et ses murs en ossature bois, est décrit dans
+[local_batteries/README.md](local_batteries/README.md).
 
 ## Démarrage sous NixOS
 
