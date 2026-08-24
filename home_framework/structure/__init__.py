@@ -1,7 +1,6 @@
-"""Composants structurels réutilisables."""
+"""Composants constructifs réutilisables entre projets."""
 
 from .bois import Arbaletrier, Madrier, PoutreI, Tasseau
-from .charpente import CharpenteAFrame, ElementCharpente
 from .connecteurs import (
     FerrurePiedAFrame,
     KitTirantAFrame,
@@ -28,12 +27,10 @@ from .plancher import ElementPlancher, PlancherAFrame, PlancherBois
 
 __all__ = [
     "Arbaletrier",
-    "CharpenteAFrame",
     "DalleOSB",
-    "ElementCharpente",
+    "ElementPlancher",
     "FerrurePiedAFrame",
     "KitTirantAFrame",
-    "ElementPlancher",
     "Madrier",
     "PlanFixationEWH",
     "PlanFixationSAI",

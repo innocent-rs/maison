@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from maison.chiffrage import Chiffrage, ModeTarification
-from maison.prix import TARIFS
+from home_framework.chiffrage import Chiffrage, ModeTarification
+from catalogues.prix import TARIFS
 from projets import resoudre_projet_et_lot
 
 

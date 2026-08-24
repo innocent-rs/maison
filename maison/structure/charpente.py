@@ -6,7 +6,7 @@ from math import cos, floor, radians, tan
 from build123d import Pos, Rot, Shape
 
 from maison.geometrie import GeometrieAFrame
-from maison.nomenclature import Nomenclaturable
+from home_framework.nomenclature import Nomenclaturable
 from maison.structure.bois import Arbaletrier
 from maison.structure.connecteurs import FerrurePiedAFrame, KitTirantAFrame
 

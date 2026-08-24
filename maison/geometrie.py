@@ -3,21 +3,7 @@
 from dataclasses import dataclass
 from math import radians, tan
 
-
-@dataclass(frozen=True, slots=True)
-class GeometriePlancherRectangulaire:
-    """Emprise simple pour les sous-projets qui ne sont pas des A-frames."""
-
-    largeur_interieure: float
-    longueur_interieure: float
-
-    def __post_init__(self) -> None:
-        if min(self.largeur_interieure, self.longueur_interieure) <= 0:
-            raise ValueError("les dimensions du plancher doivent être positives")
-
-    @property
-    def surface_plancher(self) -> float:
-        return self.largeur_interieure * self.longueur_interieure / 1_000_000
+from home_framework.geometrie import GeometriePlancherRectangulaire
 
 
 @dataclass(frozen=True, slots=True)

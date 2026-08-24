@@ -9,7 +9,7 @@ from local_batteries import creer_local_batteries
 from local_batteries.debit import exporter_debit, lignes_resume_debit
 from main import make_part
 from maison.debit import lignes_resume_panneaux_osb
-from maison.nomenclature import Nomenclature
+from home_framework.nomenclature import Nomenclature
 
 
 FabriqueProjet = Callable[[], Any]

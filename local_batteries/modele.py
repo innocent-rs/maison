@@ -1,21 +1,32 @@
 """Plancher très rigide de 9 m² pour le local batteries."""
 
 from dataclasses import dataclass
+from gc import collect
 
-from build123d import Align, Box, Pos, Rot
+from build123d import Align, Box, Location, Pos, Rot
 
-from maison.geometrie import GeometriePlancherRectangulaire
-from maison.nomenclature import ArticleBOM, LotBOM, Nomenclature, Nomenclaturable
-from maison.structure import (
+from home_framework.assemblage import (
+    AssemblageContraint,
+    InstructionAssemblage,
+    PieceInstance,
+)
+from home_framework.geometrie import GeometriePlancherRectangulaire
+from home_framework.nomenclature import (
+    ArticleBOM,
+    LotBOM,
+    Nomenclature,
+    Nomenclaturable,
+)
+from home_framework.structure import (
     DalleOSB,
     ElementPlancher,
     PanneauIsonatFlex55,
-    PlancherAFrame,
+    PlancherBois,
     TypeBordsOSB,
     VisPlancherOSB5x60,
     VisPlancherOSB5x80,
 )
-from maison.structure.panneaux import PanneauPlancherOSB
+from home_framework.structure.panneaux import PanneauPlancherOSB
 
 from .murs import MursLocalBatteries
 
@@ -65,7 +76,7 @@ class DecoupeIsonatLocalBatteries:
 class LocalBatteries:
     """Local technique monobloc, hors toiture et fondations."""
 
-    plancher: PlancherAFrame
+    plancher: PlancherBois
     murs: MursLocalBatteries
     charge_batteries_kg: float = 1_000.0
     nombre_dalles_osb_achetees: int = 14
@@ -94,8 +105,9 @@ class LocalBatteries:
     def geometrie(self) -> GeometriePlancherRectangulaire:
         return self.plancher.geometrie
 
-    def _elements_isolant(self) -> list[ElementPlancher]:
-        elements: list[ElementPlancher] = []
+    def _declarations_isolant(self) -> tuple[PieceInstance, ...]:
+        """Déclare chaque découpe d'isolant sur son fond OSB porteur."""
+        declarations: list[PieceInstance] = []
         demi_traverse = self.plancher.section_largeur / 2
         axes_traverses = self.plancher.axes_traverses()
         axes_solives = self.plancher.axes_solives_i()
@@ -110,31 +122,75 @@ class LocalBatteries:
             ),
             (axes_solives[-1] + demi_ame, face_rive_droite),
         ]
-        index = 0
-        for axe_gauche, axe_droit in zip(axes_traverses, axes_traverses[1:]):
+        operation = InstructionAssemblage(
+            "isolant_caissons",
+            "Remplir les caissons d'isolant",
+            "Découper puis poser la fibre de bois sur les fonds OSB, caisson "
+            "par caisson, sans vide périphérique et sans écraser l'épaisseur.",
+            (
+                "Découpe : 607,5 × 278,8 mm avant compression de pose",
+                "Épaisseur posée : 145 mm",
+            ),
+        )
+        for travee, (axe_gauche, axe_droit) in enumerate(
+            zip(axes_traverses, axes_traverses[1:]),
+            start=1,
+        ):
             debut_x = axe_gauche + demi_traverse
             fin_x = axe_droit - demi_traverse
-            for debut_y, fin_y in limites_caissons_y:
-                index += 1
+            for caisson, (debut_y, fin_y) in enumerate(
+                limites_caissons_y,
+                start=1,
+            ):
                 piece = DecoupeIsonatLocalBatteries(
                     longueur_pose=round(fin_x - debut_x, 6),
                     largeur_pose=round(fin_y - debut_y, 6),
                 )
-                elements.append(
-                    ElementPlancher(
-                        f"Isolant Isonat {index:02d}",
-                        piece,
-                        Pos(
-                            debut_x,
-                            (debut_y + fin_y) / 2,
-                            self.plancher.hauteur_membrure_solive_i
-                            + self.plancher.epaisseur_osb_caissons,
-                        )
-                        * piece.construire(),
-                        "khaki",
+                reference = (
+                    f"fond_osb_rive_gauche_{travee}"
+                    if caisson == 1
+                    else (
+                        f"fond_osb_rive_droit_{travee}"
+                        if caisson == len(limites_caissons_y)
+                        else f"fond_osb_{caisson - 1:02d}_{travee}"
                     )
                 )
-        return elements
+                declarations.append(
+                    PieceInstance.placer_sur(
+                        f"isolant_local_{caisson:02d}_{travee}",
+                        f"Isolant Isonat {caisson:02d}.{travee}",
+                        piece,
+                        reference,
+                        Location(
+                            (
+                                debut_x,
+                                (debut_y + fin_y) / 2,
+                                self.plancher.hauteur_membrure_solive_i
+                                + self.plancher.epaisseur_osb_caissons,
+                            )
+                        ),
+                        "khaki",
+                        operation=operation,
+                    )
+                )
+        return tuple(declarations)
+
+    def assemblage_plancher(self) -> AssemblageContraint:
+        """Source unique du manuel et de la CAO du plancher jusqu'à l'isolant."""
+        # Les joints build123d se référencent mutuellement. Une collecte avant
+        # une nouvelle résolution libère les graphes devenus inaccessibles.
+        collect()
+        return AssemblageContraint.declarer(
+            *self.plancher.declarations_assemblage(),
+            *self._declarations_isolant(),
+        )
+
+    def _elements_isolant(self) -> list[ElementPlancher]:
+        return [
+            piece
+            for piece in self.assemblage_plancher().pieces
+            if isinstance(piece.piece, DecoupeIsonatLocalBatteries)
+        ]
 
     def _elements_osb(self) -> list[ElementPlancher]:
         elements: list[ElementPlancher] = []
@@ -207,16 +263,15 @@ class LocalBatteries:
 
     def elements(self) -> list[ElementPlancher]:
         return [
-            *self.plancher.elements(),
-            *self._elements_isolant(),
+            *self.assemblage_plancher().pieces,
             *self._elements_osb(),
             *self.murs.elements(),
         ]
 
     def pieces_bom(self) -> list[Nomenclaturable]:
         pieces: list[Nomenclaturable] = [
-            *self.plancher.pieces_bom(),
-            *self._elements_isolant(),
+            *self.assemblage_plancher().pieces,
+            *self.plancher.lots_fixations(),
             *self._elements_osb(),
             *self.murs.pieces_bom(),
             LotBOM(
@@ -290,7 +345,7 @@ def creer_local_batteries() -> LocalBatteries:
         largeur_interieure=3_000,
         longueur_interieure=3_000,
     )
-    plancher = PlancherAFrame(
+    plancher = PlancherBois(
         geometrie,
         section_largeur=120,
         section_hauteur=240,

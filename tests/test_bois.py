@@ -1,6 +1,6 @@
 import unittest
 
-from maison.structure import Arbaletrier, Madrier, Tasseau
+from home_framework.structure import Arbaletrier, Madrier, Tasseau
 
 
 class TestMadrier(unittest.TestCase):

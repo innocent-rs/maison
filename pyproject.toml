@@ -1,7 +1,7 @@
 [project]
-name = "maison-codex"
+name = "home-framework"
 version = "0.1.0"
-description = "Projet de CAO paramétrique avec build123d et ocp_vscode"
+description = "Framework déclaratif de CAO, assemblage, BOM et débit pour l'habitat"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [

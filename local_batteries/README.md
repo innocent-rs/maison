@@ -103,15 +103,16 @@ just local-batteries-manuel
 ```
 
 Le document est écrit dans
-`build/local_batteries/manuel_assemblage_poutres.pdf`. Son périmètre est
-volontairement limité aux 43 poutres du plancher : 2 poutres longitudinales,
-5 traverses et 36 poutres en I. Les quantités, dimensions, positions et vues
-sont relues sur le graphe de contraintes qui produit aussi les solides
-`build123d`, la BOM et les débits. Les six opérations ne sont pas écrites dans
-le générateur : elles sont déduites des références orientées et du regroupement
-des pièces partageant les mêmes appuis. Ni les murs, ni les panneaux, ni
-l'isolation, ni les connecteurs ne sont inclus. Le POC décrit donc
-l'implantation et l'ordre de pose, pas encore les gestes de fixation.
+`build/local_batteries/manuel_assemblage_poutres.pdf`. Il couvre désormais la
+structure du plancher jusqu'à l'isolation : 43 poutres, 10 sabots Simpson SAI,
+72 étriers Simpson EWH, 8 tasseaux de rive, 40 fonds OSB et 40 découpes
+d'isolant. Les quantités, dimensions, positions et vues sont relues sur le
+graphe de contraintes qui produit aussi les solides `build123d`, la BOM et les
+débits. Les onze opérations ne sont pas écrites dans le générateur : elles sont
+déduites des références orientées et du regroupement des pièces partageant la
+même intention de pose. Les textes et contrôles de fixation Simpson sont
+portés par les déclarations CAO. Les murs et les deux couches d'OSB supérieures
+restent hors de cette édition du manuel.
 
 Le chiffrage et les prix fournisseurs sont fournis par le framework commun :
 
@@ -121,7 +122,7 @@ just optimiser local_batteries
 ```
 
 Le sous-projet ne contient aucun prix. Les références communes sont résolues
-par `maison/prix.py`, y compris automatiquement pour toute longueur de madrier
+par `catalogues/prix.py`, y compris automatiquement pour toute longueur de madrier
 `120 × 240`, de STEICOjoist `SJ60/240`, de tasseau `60 × 40` ou de bois
 d'ossature `45 × 145`. Les CSV sont écrits dans `build/local_batteries/`.
 

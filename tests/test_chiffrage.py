@@ -5,9 +5,9 @@ from decimal import Decimal
 from chiffrer import lignes_recapitulatif_achats
 from local_batteries import creer_local_batteries
 from main import make_part
-from maison.chiffrage import Chiffrage, Tarif
+from home_framework.chiffrage import Chiffrage, Tarif
 from maison.geometrie import GeometrieAFrame
-from maison.nomenclature import ArticleBOM, LotBOM, Nomenclature
+from home_framework.nomenclature import ArticleBOM, LotBOM, Nomenclature
 from maison.prix import TARIFS
 from maison.structure import PlancherAFrame
 from optimiser import lignes_resume_lots_lineaires, lignes_resume_panneaux_osb

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from maison.nomenclature import Nomenclature
+from home_framework.nomenclature import Nomenclature
 from maison.structure.charpente import CharpenteAFrame
 from maison.structure.plancher import PlancherAFrame
 

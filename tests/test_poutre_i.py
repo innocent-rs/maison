@@ -1,6 +1,6 @@
 import unittest
 
-from maison.structure import PoutreI
+from home_framework.structure import PoutreI
 
 
 class TestPoutreI(unittest.TestCase):

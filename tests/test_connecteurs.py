@@ -1,6 +1,6 @@
 import unittest
 
-from maison.structure import (
+from home_framework.structure import (
     FerrurePiedAFrame,
     KitTirantAFrame,
     PlanFixationEWH,

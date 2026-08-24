@@ -5,8 +5,8 @@ from collections import Counter
 from math import ceil, floor
 from pathlib import Path
 
-from maison.optimisation import PieceDebit, PlanDebit, optimiser_debit
-from maison.structure import DalleOSB, TypeBordsOSB
+from home_framework.optimisation import PieceDebit, PlanDebit, optimiser_debit
+from home_framework.structure import DalleOSB, TypeBordsOSB
 
 from .modele import LocalBatteries
 

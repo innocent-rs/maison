@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from build123d import Align, Box, Pos
 
-from maison.nomenclature import ArticleBOM, LotBOM, Nomenclaturable
-from maison.structure import (
+from home_framework.nomenclature import ArticleBOM, LotBOM, Nomenclaturable
+from home_framework.structure import (
     DalleOSB,
     ElementPlancher,
     PanneauIsonatFlex55,

@@ -1,8 +1,21 @@
-# maison-codex
+# home-framework
 
-Petit projet Python de CAO paramétrique avec
+Framework Python de CAO paramétrique avec
 [build123d](https://build123d.readthedocs.io/) et visualisation dans Firefox via
 le serveur web autonome de `ocp_vscode`.
+
+Le dépôt sépare désormais le moteur des projets qui l'utilisent :
+
+```text
+home_framework/   assemblage déclaratif, manuel, BOM, chiffrage et optimisation
+catalogues/       données commerciales partagées, hors du moteur
+maison/            projet de maison en A
+local_batteries/   projet de local technique 3 × 3 m
+```
+
+Le package `home_framework` ne dépend d'aucun projet. Les anciens modules
+génériques sous `maison` restent temporairement disponibles comme façades de
+compatibilité.
 
 Le local technique batteries indépendant (`3 × 3 m`, `9 m²`), avec son
 plancher renforcé et ses murs en ossature bois, est décrit dans
@@ -108,21 +121,33 @@ implémenter `article_bom()` ; elle est ensuite agrégée sans modifier l'export
 
 ### Assemblages contraints
 
-Les composants linéaires du plancher peuvent être décrits par un graphe de
-contraintes orientées dans `maison/assemblage.py`. Une `PieceInstance` porte à
-la fois son article de BOM et son intention de placement : ancrage dans le
-repère, décalage parallèle ou positionnement entre deux faces. La résolution
-de ce graphe produit les solides `build123d` consommés par la CAO et la BOM.
+Les composants du plancher peuvent être décrits par un graphe de contraintes
+orientées dans `home_framework/assemblage.py`. Une `PieceInstance` porte à la
+fois son article de BOM et son intention de placement : ancrage dans le
+repère, décalage parallèle, positionnement entre deux faces ou pose sur une
+référence. La résolution de ce graphe s'appuie sur les `Location` et
+`RigidJoint` natifs de `build123d` et produit les solides consommés par la CAO
+et la BOM. Une
+`TrameEntreFaces` déploie déclarativement le produit « axes × paires d'appuis »
+sans écrire une boucle de placement pour chaque composant.
+
+Chaque bois linéaire est enveloppé dans un `ComposantLineaire` qui possède dès
+sa création deux joints intrinsèques, `debut` et `fin`. L'assemblage connecte
+ensuite uniquement des joints nommés, selon le patron du
+[tutoriel officiel build123d](https://build123d.readthedocs.io/en/latest/tutorial_joints.html).
 
 Les dépendances et les appuis communs permettent également de déduire une
 timeline d'assemblage, même lorsque les pièces sont déclarées dans un ordre
-différent. Le manuel PDF devient ainsi un renderer de cette même source au
-lieu de maintenir une liste d'étapes séparée.
+différent. Les `InstructionAssemblage` attachent les gestes et contrôles aux
+objets CAO. Le manuel PDF devient ainsi un renderer de cette même source au
+lieu de maintenir une liste d'étapes séparée. Pour le local batteries, le
+graphe couvre les SAI, les traverses, les EWH, les solives, les tasseaux, les
+fonds OSB et l'isolant, dans cet ordre déduit des contraintes.
 
 ### Chiffrage par lot
 
 Les tarifs TTC sont maintenus directement en Python dans
-`maison/prix.py`. Un tarif représente toujours une unité réellement achetée :
+`catalogues/prix.py`. Un tarif représente toujours une unité réellement achetée :
 une barre complète, une pièce, une boîte ou un lot minimal exprimé en mètres
 linéaires. Il n'existe pas de facturation de la seule longueur utile.
 

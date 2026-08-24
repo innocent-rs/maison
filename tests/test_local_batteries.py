@@ -2,6 +2,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from build123d import Location
+
 from local_batteries import creer_local_batteries
 from local_batteries.debit import (
     calepinage_fonds_caissons,
@@ -9,17 +11,18 @@ from local_batteries.debit import (
     plan_debit_osb,
 )
 from local_batteries.manuel_assemblage import (
+    elements_du_manuel,
     etapes_assemblage,
     exporter_manuel_assemblage,
     poutres_du_plancher,
 )
-from maison.assemblage import (
+from home_framework.assemblage import (
     Ancrage,
     AssemblageContraint,
     DecalageParallele,
     EntreFaces,
 )
-from maison.structure.bois import Madrier, PoutreI
+from home_framework.structure.bois import Madrier, PoutreI
 
 
 class TestLocalBatteries(unittest.TestCase):
@@ -48,16 +51,65 @@ class TestLocalBatteries(unittest.TestCase):
         self.assertEqual(nomenclature["MAD-120x240-L2756"].quantite, 5)
         self.assertEqual(nomenclature["SJI-60x240-L593"].quantite, 36)
 
-    def test_manuel_assemblage_selectionne_uniquement_les_poutres(self) -> None:
+    def test_manuel_assemblage_couvre_le_plancher_jusqu_a_l_isolant(self) -> None:
         poutres = poutres_du_plancher(self.local)
+        elements = elements_du_manuel(self.local)
 
         self.assertEqual(len(poutres), 43)
         self.assertTrue(
             all(isinstance(element.piece, (Madrier, PoutreI)) for element in poutres)
         )
+        self.assertEqual(len(elements), 213)
         self.assertEqual(
             [len(etape.nouvelles) for etape in etapes_assemblage(self.local)],
-            [2, 5, 9, 9, 9, 9],
+            [2, 10, 5, 72, 9, 9, 9, 9, 8, 40, 40],
+        )
+
+    def test_sabots_osb_et_isolant_forment_une_chaine_de_dependances(self) -> None:
+        assemblage = self.local.assemblage_plancher()
+        instances = {
+            instance.identifiant: instance for instance in assemblage.instances
+        }
+
+        self.assertEqual(
+            instances["sabot_sai_01_gauche"].contrainte.references,
+            ("rive_gauche",),
+        )
+        self.assertIn(
+            "sabot_sai_01_gauche",
+            instances["traverse_01"].contrainte.references,
+        )
+        self.assertEqual(
+            instances["ewh_01_1_debut"].contrainte.references,
+            ("traverse_01",),
+        )
+        self.assertIn(
+            "ewh_01_1_debut",
+            instances["solive_01_1"].contrainte.references,
+        )
+        self.assertIn(
+            "solive_02_1",
+            instances["fond_osb_01_1"].contrainte.references,
+        )
+        self.assertEqual(
+            instances["isolant_local_01_1"].contrainte.references,
+            ("fond_osb_rive_gauche_1",),
+        )
+        self.assertEqual(
+            [operation.identifiant for operation in assemblage.operations()],
+            [
+                "implantation",
+                "sabots_sai",
+                "traverses",
+                "etriers_ewh",
+                "entre_traverse_01_traverse_02",
+                "entre_traverse_02_traverse_03",
+                "entre_traverse_03_traverse_04",
+                "entre_traverse_04_traverse_05",
+                "tasseaux_rive",
+                "fonds_osb",
+                "isolant_caissons",
+            ],
         )
 
     def test_contraintes_poutres_gouvernent_cao_bom_et_timeline(self) -> None:
@@ -118,7 +170,33 @@ class TestLocalBatteries(unittest.TestCase):
             [operation.identifiant for operation in assemblage.operations()],
         )
 
-    def test_manuel_assemblage_est_un_pdf_de_huit_pages(self) -> None:
+    def test_assemblage_utilise_les_joints_rigides_build123d(self) -> None:
+        assemblage = self.plancher.assemblage_poutres()
+        gauche = assemblage.piece("rive_gauche")
+        droite = assemblage.piece("rive_droite")
+        traverse = assemblage.piece("traverse_01")
+        solive = assemblage.piece("solive_01_1")
+
+        self.assertTrue(all(isinstance(piece.location, Location) for piece in assemblage.pieces))
+        self.assertIn("ancrage_rive_gauche", gauche.forme.joints)
+        self.assertIs(
+            gauche.forme.joints["connexion_rive_droite"].connected_to,
+            droite.forme.joints["debut"],
+        )
+        self.assertIs(
+            gauche.forme.joints["connexion_traverse_01"].connected_to,
+            traverse.forme.joints["debut"],
+        )
+        self.assertIs(
+            droite.forme.joints["connexion_traverse_01"].connected_to,
+            traverse.forme.joints["fin"],
+        )
+        self.assertIs(
+            traverse.forme.joints["connexion_solive_01_1"].connected_to,
+            solive.forme.joints["debut"],
+        )
+
+    def test_manuel_assemblage_est_un_pdf_de_treize_pages(self) -> None:
         with TemporaryDirectory() as dossier:
             chemin = exporter_manuel_assemblage(
                 self.local,
@@ -128,7 +206,7 @@ class TestLocalBatteries(unittest.TestCase):
 
         self.assertTrue(contenu.startswith(b"%PDF-1.4"))
         self.assertTrue(contenu.rstrip().endswith(b"%%EOF"))
-        self.assertEqual(contenu.count(b"/Type /Page "), 8)
+        self.assertEqual(contenu.count(b"/Type /Page "), 13)
 
     def test_double_couche_osb_croisee(self) -> None:
         osb = [

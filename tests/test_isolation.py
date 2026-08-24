@@ -1,6 +1,6 @@
 import unittest
 
-from maison.structure import PanneauIsonatFlex55
+from home_framework.structure import PanneauIsonatFlex55
 
 
 class TestPanneauIsonatFlex55(unittest.TestCase):

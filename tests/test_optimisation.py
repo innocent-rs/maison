@@ -1,7 +1,7 @@
 import unittest
 from decimal import Decimal
 
-from maison.optimisation import PieceDebit, optimiser_debit
+from home_framework.optimisation import PieceDebit, optimiser_debit
 
 
 class TestOptimisationDebit(unittest.TestCase):
