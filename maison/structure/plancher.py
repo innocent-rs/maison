@@ -5,7 +5,7 @@ from itertools import pairwise
 from math import ceil, isclose
 from build123d import Align, Box, Pos, Rot, Shape
 
-from maison.geometrie import GeometrieAFrame
+from maison.geometrie import GeometrieAFrame, GeometriePlancherRectangulaire
 from maison.nomenclature import LotBOM, Nomenclaturable
 from maison.structure.bois import Madrier, PoutreI, Tasseau
 from maison.structure.connecteurs import (
@@ -50,7 +50,7 @@ class PlancherAFrame:
     traverse massive par un étrier EWH.
     """
 
-    geometrie: GeometrieAFrame
+    geometrie: GeometrieAFrame | GeometriePlancherRectangulaire
     section_largeur: float = 120.0
     section_hauteur: float = 240.0
     nombre_traverses: int = 3

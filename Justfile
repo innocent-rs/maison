@@ -56,6 +56,14 @@ kill:
 run:
     python main.py
 
+# Affiche le plancher 3 × 3 m du local batteries
+local-batteries:
+    python -m local_batteries.main
+
+# Exporte les nomenclatures du local batteries
+local-batteries-bom:
+    python -m local_batteries.bom
+
 # Lance les tests du modèle paramétrique
 test:
     python -m unittest discover -s tests
@@ -64,13 +72,13 @@ test:
 bom:
     python bom.py
 
-# Chiffre un lot : tous, plancher, charpente, a-frame ou total
-chiffrage lot="tous":
-    python chiffrer.py --lot {{lot}}
+# Chiffre un projet avec le catalogue commun ; les anciens lots restent admis
+chiffrage projet="maison" lot="tous":
+    python chiffrer.py --projet {{projet}} --lot {{lot}}
 
-# Optimise les coupes dans les barres commerciales et exporte le plan de débit
-optimiser lot="plancher":
-    python optimiser.py --lot {{lot}}
+# Optimise les coupes d'un projet dans les produits commerciaux communs
+optimiser projet="maison" lot="plancher":
+    python optimiser.py --projet {{projet}} --lot {{lot}}
 
 # Compare les premiers cas de charge du châssis primaire
 simulate:

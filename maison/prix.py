@@ -1,8 +1,8 @@
-"""Base de prix locale du projet.
+"""Base de prix commune à tous les projets du dépôt.
 
-Renseigner les prix TTC et les conditionnements ici. Les références sont celles
-de ``build/bom.csv``. Une valeur ``None`` est volontairement considérée comme
-manquante par le chiffrage.
+Renseigner les prix TTC et les conditionnements ici. Les références viennent
+des nomenclatures d'achat des différents projets. Une valeur ``None`` est
+volontairement considérée comme manquante par le chiffrage.
 
 Exemples : ``Tarif.par_conditionnement("29.90", 250, "boîte de 250")``,
 ``Tarif.en_barres("183.30", longueur_commerciale_mm=13_000, ...)`` ou
@@ -10,7 +10,7 @@ Exemples : ``Tarif.par_conditionnement("29.90", 250, "boîte de 250")``,
 représente toujours une unité achetée entière, jamais une longueur utile.
 """
 
-from maison.chiffrage import Tarif
+from maison.chiffrage import CatalogueTarifs, Tarif
 
 
 # Les prix linéaires affichés par les vendeurs sont convertis au prix de la
@@ -46,8 +46,24 @@ TARIF_STEICOJOIST_SJ60X240 = Tarif.en_barres(
     note="Barre entière ; prix calculé depuis 13 m × 14,10 € TTC/m",
 )
 
+TARIF_TASSEAU_DOUGLAS_60X40 = Tarif.en_lots_lineaires(
+    "182.00",
+    longueur_du_lot_mm=20_000,
+    conditionnement="commande minimale de 20 ml",
+    fournisseur="Matériaux Naturels",
+    date_tarif="2026-08-23",
+    url=(
+        "https://www.materiaux-naturels.fr/produit-decl/5687-"
+        "lambourde-en-douglas--60x40mm-rabotee-2-faces-seche"
+    ),
+    note=(
+        "Minimum fournisseur de 20 ml à 9,10 € TTC/ml ; "
+        "longueurs de livraison non publiées"
+    ),
+)
 
-TARIFS: dict[str, Tarif] = {
+
+TARIFS_EXACTS: dict[str, Tarif] = {
     "ARB-120x250-A60-LD4126_51": Tarif(
         note="Produit commercial de l'arbalétrier à définir"
     ),
@@ -72,8 +88,6 @@ TARIFS: dict[str, Tarif] = {
     "KIT-TIRANT-AFRAME-M16-L4000": Tarif(
         note="Kit complet avec tige, platines, écrous et réglage"
     ),
-    "MAD-120x240-L3756": TARIF_DOUGLAS_CONTRECOLLE_120X240,
-    "MAD-120x240-L4800": TARIF_DOUGLAS_CONTRECOLLE_120X240,
     "OSB-BD-1196x2800x12": Tarif.par_conditionnement(
         "28.16",
         quantite=1,
@@ -108,7 +122,7 @@ TARIFS: dict[str, Tarif] = {
             "https://www.maxoutil.com/pointe-crantee-o-4mm-simpson-pour-"
             "sabot-cna-731500.html"
         ),
-        note="Deux boîtes nécessaires pour les 384 pointes des étriers EWH",
+        note="Pointes annelées prescrites pour les étriers EWH",
     ),
     "SIMPSON-CSA5.0X40": Tarif.par_conditionnement(
         "39.56",
@@ -117,7 +131,7 @@ TARIFS: dict[str, Tarif] = {
         fournisseur="Maxoutil",
         date_tarif="2026-08-23",
         url="https://www.maxoutil.com/importcat29229.html",
-        note="Deux boîtes nécessaires pour les 300 vis du plan de fixation total",
+        note="Vis homologuées pour les connecteurs Simpson",
     ),
     "SIMPSON-EWH240-61": Tarif.par_conditionnement(
         "7.30",
@@ -141,23 +155,7 @@ TARIFS: dict[str, Tarif] = {
             "https://www.maxoutil.com/sabot-a-ailes-interieures-t500-"
             "l-120-h-190-mm-simpson-sai500-120-2.html"
         ),
-        note="Six sabots, un à chaque about des trois traverses",
-    ),
-    "SJI-60x240-L2212": TARIF_STEICOJOIST_SJ60X240,
-    "TAS-60x40-L2212": Tarif.en_lots_lineaires(
-        "182.00",
-        longueur_du_lot_mm=20_000,
-        conditionnement="commande minimale de 20 ml",
-        fournisseur="Matériaux Naturels",
-        date_tarif="2026-08-23",
-        url=(
-            "https://www.materiaux-naturels.fr/produit-decl/5687-"
-            "lambourde-en-douglas--60x40mm-rabotee-2-faces-seche"
-        ),
-        note=(
-            "Minimum fournisseur de 20 ml à 9,10 € TTC/ml ; "
-            "longueurs de livraison non publiées"
-        ),
+        note="Sabot à ailes intérieures pour les traverses en madrier",
     ),
     "SPAX-0191010400355": Tarif.par_conditionnement(
         "28.00",
@@ -196,6 +194,28 @@ TARIFS: dict[str, Tarif] = {
             "https://www.materiaux-naturels.fr/produit-decl/8653-"
             "vis-torx-construction-bois-charpente-5x60"
         ),
-        note="Trois boîtes nécessaires pour les 568 vis du plancher OSB",
+        note="Fixation de la première couche de plancher OSB",
+    ),
+    "KLIMAS-KMWHT-5X80": Tarif.par_conditionnement(
+        "11.80",
+        quantite=200,
+        conditionnement="boîte de 200",
+        fournisseur="Matériaux Naturels",
+        date_tarif="2026-08-24",
+        url=(
+            "https://www.materiaux-naturels.fr/produit/1873-"
+            "vis-torx-construction-bois-charpente"
+        ),
+        note="Fixation de la seconde couche OSB ; variante Klimas 5 × 80 mm",
     ),
 }
+
+
+TARIFS = CatalogueTarifs(
+    TARIFS_EXACTS,
+    familles=(
+        (r"MAD-120x240-L[0-9]+(?:_[0-9]+)?", TARIF_DOUGLAS_CONTRECOLLE_120X240),
+        (r"SJI-60x240-L[0-9]+(?:_[0-9]+)?", TARIF_STEICOJOIST_SJ60X240),
+        (r"TAS-60x40-L[0-9]+(?:_[0-9]+)?", TARIF_TASSEAU_DOUGLAS_60X40),
+    ),
+)

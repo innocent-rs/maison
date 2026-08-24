@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import csv
+import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -155,6 +157,47 @@ class Tarif:
     @property
     def est_renseigne(self) -> bool:
         return self.prix_unitaire_ttc_eur is not None
+
+
+class CatalogueTarifs(Mapping[str, Tarif]):
+    """Catalogue commun mêlant références exactes et familles de coupes.
+
+    Les règles de famille évitent de recopier un tarif pour chaque longueur
+    générée par le CAD. Elles sont évaluées uniquement lorsqu'aucune référence
+    exacte n'existe.
+    """
+
+    def __init__(
+        self,
+        tarifs_exacts: Mapping[str, Tarif],
+        familles: tuple[tuple[str, Tarif], ...] = (),
+    ) -> None:
+        self._tarifs_exacts = dict(tarifs_exacts)
+        self._familles = tuple(
+            (re.compile(motif), tarif) for motif, tarif in familles
+        )
+
+    def __getitem__(self, reference: str) -> Tarif:
+        if reference in self._tarifs_exacts:
+            return self._tarifs_exacts[reference]
+        correspondances = tuple(
+            tarif
+            for motif, tarif in self._familles
+            if motif.fullmatch(reference)
+        )
+        if not correspondances:
+            raise KeyError(reference)
+        if len(correspondances) > 1:
+            raise ValueError(
+                f"plusieurs familles de tarifs correspondent à {reference}"
+            )
+        return correspondances[0]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._tarifs_exacts)
+
+    def __len__(self) -> int:
+        return len(self._tarifs_exacts)
 
 
 @dataclass(frozen=True, slots=True)

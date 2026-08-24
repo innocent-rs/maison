@@ -1,28 +1,17 @@
-"""Génère les chiffrages du plancher, de la charpente ou du projet complet."""
+"""Génère le chiffrage de tout projet enregistré, avec le catalogue commun."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-from main import make_part
 from maison.chiffrage import Chiffrage, ModeTarification
 from maison.prix import TARIFS
+from projets import resoudre_projet_et_lot
 
 
-LOTS = ("plancher", "charpente", "total")
-
-
-def nomenclature_du_lot(nom: str, maison):
-    if nom == "plancher":
-        return maison.nomenclature_plancher()
-    if nom == "charpente":
-        return maison.nomenclature_charpente()
-    return maison.nomenclature_achats()
-
-
-def generer(nom: str, destination: Path, maison) -> Chiffrage:
-    chiffrage = Chiffrage(nom, nomenclature_du_lot(nom, maison), TARIFS)
+def generer(nom: str, destination: Path, nomenclature) -> Chiffrage:
+    chiffrage = Chiffrage(nom, nomenclature, TARIFS)
     chiffrage.ecrire_csv(destination)
     if chiffrage.plans_debit:
         chiffrage.ecrire_debits_csv(destination.with_name(f"debit_{nom}.csv"))
@@ -81,10 +70,14 @@ def lignes_recapitulatif_achats(chiffrage: Chiffrage) -> tuple[str, ...]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--projet",
+        default="maison",
+        help="projet à chiffrer (maison ou local_batteries)",
+    )
+    parser.add_argument(
         "--lot",
-        choices=(*LOTS, "tous", "a-frame"),
         default="tous",
-        help="lot à chiffrer ; a-frame est un alias de charpente",
+        help="lot du projet à chiffrer, ou tous",
     )
     parser.add_argument(
         "--strict",
@@ -93,22 +86,40 @@ def main() -> None:
     )
     arguments = parser.parse_args()
 
-    lot_demande = "charpente" if arguments.lot == "a-frame" else arguments.lot
-    lots = LOTS if lot_demande == "tous" else (lot_demande,)
-    destination = Path("build")
+    try:
+        definition, lot_demande = resoudre_projet_et_lot(
+            arguments.projet,
+            arguments.lot,
+        )
+        lots = definition.lots_demandes(lot_demande)
+    except ValueError as erreur:
+        parser.error(str(erreur))
+
+    destination = definition.dossier_sortie
     destination.mkdir(parents=True, exist_ok=True)
-    maison = make_part()
+    projet = definition.construire()
 
     incomplet = False
     for lot in lots:
         fichier = destination / f"chiffrage_{lot}.csv"
-        chiffrage = generer(lot, fichier, maison)
+        identifiant_lot = (
+            lot if definition.identifiant == "maison" else definition.identifiant
+        )
+        chiffrage = generer(
+            identifiant_lot,
+            fichier,
+            definition.nomenclature(projet, lot),
+        )
         incomplet |= not chiffrage.est_complet
         if chiffrage.est_vide:
-            print(f"{lot:10} : désactivé — aucun article — {fichier}")
+            print(
+                f"{definition.identifiant}/{lot} : "
+                f"désactivé — aucun article — {fichier}"
+            )
             continue
         print(
-            f"{lot:10} : {chiffrage.sous_total_renseigne_ttc_eur:.2f} € TTC "
+            f"{definition.identifiant}/{lot} : "
+            f"{chiffrage.sous_total_renseigne_ttc_eur:.2f} € TTC "
             f"— {len(chiffrage.references_manquantes)} référence(s) sans prix "
             f"— {fichier}"
         )

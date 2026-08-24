@@ -13,6 +13,7 @@ from .connecteurs import (
     VisBoisOSB4x35,
     VisConnecteurCSA5x40,
     VisPlancherOSB5x60,
+    VisPlancherOSB5x80,
     VisTasseauKlimas6x160,
 )
 from .isolation import PanneauIsonatFlex55
@@ -48,5 +49,6 @@ __all__ = [
     "VisBoisOSB4x35",
     "VisConnecteurCSA5x40",
     "VisPlancherOSB5x60",
+    "VisPlancherOSB5x80",
     "VisTasseauKlimas6x160",
 ]

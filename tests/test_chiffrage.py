@@ -3,6 +3,7 @@ import unittest
 from decimal import Decimal
 
 from chiffrer import lignes_recapitulatif_achats
+from local_batteries import creer_local_batteries
 from main import make_part
 from maison.chiffrage import Chiffrage, Tarif
 from maison.geometrie import GeometrieAFrame
@@ -209,6 +210,25 @@ class TestChiffrage(unittest.TestCase):
         self.assertEqual(
             chiffrage.sous_total_renseigne_ttc_eur,
             Decimal("3448.50"),
+        )
+
+    def test_catalogue_commun_resout_les_nouvelles_longueurs_de_coupe(self) -> None:
+        self.assertIs(TARIFS["MAD-120x240-L3000"], TARIFS["MAD-120x240-L2756"])
+        self.assertIs(TARIFS["SJI-60x240-L593"], TARIFS["SJI-60x240-L2212"])
+        self.assertIs(TARIFS["TAS-60x40-L593"], TARIFS["TAS-60x40-L2212"])
+
+    def test_local_batteries_utilise_le_chiffrage_commun(self) -> None:
+        chiffrage = Chiffrage(
+            "local_batteries",
+            creer_local_batteries().nomenclature_achats(),
+            TARIFS,
+        )
+
+        self.assertTrue(chiffrage.est_complet)
+        self.assertEqual(len(chiffrage.plans_debit), 2)
+        self.assertEqual(
+            chiffrage.sous_total_renseigne_ttc_eur,
+            Decimal("3396.64"),
         )
 
     def test_plancher_osb_achete_quatorze_dalles_et_trois_boites(self) -> None:

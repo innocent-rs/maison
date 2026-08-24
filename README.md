@@ -4,6 +4,9 @@ Petit projet Python de CAO paramétrique avec
 [build123d](https://build123d.readthedocs.io/) et visualisation dans Firefox via
 le serveur web autonome de `ocp_vscode`.
 
+Le plancher indépendant du local technique batteries (`3 × 3 m`, `9 m²`) est
+décrit dans [local_batteries/README.md](local_batteries/README.md).
+
 ## Démarrage sous NixOS
 
 1. Entrer dans l'environnement (les dépendances Python sont synchronisées
@@ -182,6 +185,17 @@ Générer les trois chiffrages :
 just chiffrage
 ```
 
+Le moteur et le catalogue fournisseurs sont communs à tous les projets. Un
+sous-projet fournit seulement sa nomenclature d'achat ; les longueurs de
+madrier `120 × 240` et de `SJ60/240` sont automatiquement rattachées aux mêmes
+barres commerciales. Par exemple :
+
+```console
+just chiffrage local_batteries
+```
+
+Le résultat est écrit dans `build/local_batteries/chiffrage_total.csv`.
+
 Ou un seul sous-ensemble :
 
 ```console
@@ -204,6 +218,12 @@ Afficher et exporter séparément le plan de débit :
 
 ```console
 just optimiser plancher
+```
+
+Pour le plan de débit du local batteries :
+
+```console
+just optimiser local_batteries
 ```
 
 Le détail d'une barre par ligne est écrit dans `build/debit_<lot>.csv`, avec les

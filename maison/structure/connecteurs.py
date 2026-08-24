@@ -396,6 +396,29 @@ class VisPlancherOSB5x60:
 
 
 @dataclass(frozen=True, slots=True)
+class VisPlancherOSB5x80:
+    """Vis Klimas traversant deux couches de plancher OSB de 22 mm."""
+
+    diametre: float = 5.0
+    longueur: float = 80.0
+    materiau: str = "Acier carbone galvanisé"
+
+    def __post_init__(self) -> None:
+        if min(self.diametre, self.longueur) <= 0:
+            raise ValueError("les dimensions de la vis doivent être positives")
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference="KLIMAS-KMWHT-5X80",
+            designation="Vis bois Klimas KMWHT 5 × 80 mm, filetage partiel",
+            categorie="Fixation / vis plancher",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.diametre,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FerrurePiedAFrame:
     """Enveloppe de principe d'une ferrure de pied à deux joues.
 
