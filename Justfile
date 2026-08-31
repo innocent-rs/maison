@@ -68,6 +68,18 @@ atelier-mob:
 atelier-mob-fleche:
     python -m atelier_mob.webapp
 
+# Pré-vérifie le plancher de l'atelier aux ELU/ELS selon l'Eurocode 5
+atelier-mob-verification:
+    python -m atelier_mob.verification
+
+# Exporte les couches GLB puis lance le viewer Three.js sur http://127.0.0.1:8080
+atelier-mob-viewer:
+    python atelier_mob_viewer/serve.py
+
+# Régénère uniquement les couches 3D consommées par le viewer Three.js
+atelier-mob-viewer-export:
+    python atelier_mob_viewer/export_model.py
+
 # Exporte les nomenclatures du local batteries
 local-batteries-bom:
     python -m local_batteries.bom

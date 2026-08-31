@@ -1,0 +1,135 @@
+{
+  "project": {
+    "name": "Atelier MOB — plancher bois",
+    "widthM": 7.0,
+    "lengthM": 15.0,
+    "objectCount": 645,
+    "coordinateUnit": "m"
+  },
+  "summary": {
+    "modeledMassKg": 4768.779,
+    "floorMassIncludingFastenersKg": 4788.446,
+    "foundationPlatesMassKg": 37.68,
+    "totalMassIncludingFastenersKg": 4826.126,
+    "floorAreaM2": 105.0
+  },
+  "layers": [
+    {
+      "id": "fondations",
+      "label": "Platines de fondation",
+      "description": "Platines acier des 24 pieux vissés",
+      "color": "#54748c",
+      "file": "fondations.glb",
+      "count": 24,
+      "visible": true,
+      "explodeOffsetM": -1.6,
+      "massKg": 37.68,
+      "linearMassKgM": null,
+      "unitMassKg": null
+    },
+    {
+      "id": "poutres_primaires",
+      "label": "Poutres primaires",
+      "description": "Longrines de rive et huit traverses en 120 × 240 mm",
+      "color": "#9b5d35",
+      "file": "poutres_primaires.glb",
+      "count": 10,
+      "visible": true,
+      "explodeOffsetM": 0.0,
+      "massKg": 1210.291,
+      "linearMassKgM": 14.4,
+      "unitMassKg": null
+    },
+    {
+      "id": "connecteurs_primaires",
+      "label": "Sabots des traverses",
+      "description": "Connecteurs Simpson SAI entre traverses et longrines",
+      "color": "#68737d",
+      "file": "connecteurs_primaires.glb",
+      "count": 16,
+      "visible": true,
+      "explodeOffsetM": 0.0,
+      "massKg": 8.96,
+      "linearMassKgM": null,
+      "unitMassKg": 0.56
+    },
+    {
+      "id": "solives_i",
+      "label": "Solives en I",
+      "description": "Solives STEICOjoist SJ60/240 entre les traverses",
+      "color": "#d6ae73",
+      "file": "solives_i.glb",
+      "count": 77,
+      "visible": true,
+      "explodeOffsetM": 0.8,
+      "massKg": 634.208,
+      "linearMassKgM": 4.12,
+      "unitMassKg": 8.236
+    },
+    {
+      "id": "connecteurs_solives",
+      "label": "Étriers des solives",
+      "description": "Étriers Simpson EWH aux abouts des solives en I",
+      "color": "#82909a",
+      "file": "connecteurs_solives.glb",
+      "count": 154,
+      "visible": true,
+      "explodeOffsetM": 0.8,
+      "massKg": 50.358,
+      "linearMassKgM": null,
+      "unitMassKg": 0.327
+    },
+    {
+      "id": "tasseaux",
+      "label": "Tasseaux de rive",
+      "description": "Appuis 60 × 40 mm sous les fonds de caisson latéraux",
+      "color": "#b77a45",
+      "file": "tasseaux.glb",
+      "count": 14,
+      "visible": true,
+      "explodeOffsetM": 0.8,
+      "massKg": 33.586,
+      "linearMassKgM": 1.2,
+      "unitMassKg": 2.399
+    },
+    {
+      "id": "fonds_osb",
+      "label": "Fonds de caisson OSB",
+      "description": "Panneaux OSB de 12 mm sous l’isolation",
+      "color": "#b88a50",
+      "file": "fonds_osb.glb",
+      "count": 84,
+      "visible": true,
+      "explodeOffsetM": -0.8,
+      "massKg": 660.852,
+      "linearMassKgM": null,
+      "unitMassKg": null
+    },
+    {
+      "id": "isolant",
+      "label": "Isolant",
+      "description": "Panneaux Isonat Flex 55 de 145 mm",
+      "color": "#c9bd72",
+      "file": "isolant.glb",
+      "count": 168,
+      "visible": true,
+      "explodeOffsetM": 1.6,
+      "massKg": 746.844,
+      "linearMassKgM": null,
+      "unitMassKg": 4.446
+    },
+    {
+      "id": "osb_superieur",
+      "label": "OSB supérieur",
+      "description": "Dalles de plancher OSB de 22 mm",
+      "color": "#d47a2b",
+      "file": "osb_superieur.glb",
+      "count": 98,
+      "visible": true,
+      "explodeOffsetM": 2.4,
+      "massKg": 1386.0,
+      "linearMassKgM": null,
+      "unitMassKg": null
+    }
+  ]
+}

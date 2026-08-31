@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Viewer Three.js des couches constructives du plancher de l’atelier MOB"
+    />
+    <title>Atelier MOB — Viewer du plancher</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Réglages du viewer">
+        <header class="project-header">
+          <p class="eyebrow">Modèle constructif</p>
+          <h1>Atelier MOB</h1>
+          <p class="subtitle">Plancher bois paramétrique</p>
+          <div class="project-stats" aria-label="Dimensions du projet">
+            <span id="project-size">7 × 15 m</span>
+            <span id="object-count">— pièces</span>
+          </div>
+        </header>
+
+        <section class="sidebar-section layer-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Composition</p>
+              <h2>Couches</h2>
+            </div>
+            <button class="text-button" id="toggle-all" type="button">
+              Tout masquer
+            </button>
+          </div>
+          <div class="layer-list" id="layer-list"></div>
+        </section>
+
+        <section class="sidebar-section presets" aria-label="Vues prédéfinies">
+          <p class="eyebrow">Affichage rapide</p>
+          <div class="preset-grid">
+            <button id="show-all" type="button">Tout afficher</button>
+            <button id="show-structure" type="button">Structure seule</button>
+            <button id="show-caissons" type="button">Caissons ouverts</button>
+          </div>
+        </section>
+
+        <footer class="mass-card">
+          <div>
+            <span>Masse visible</span>
+            <strong id="visible-mass">—</strong>
+          </div>
+          <p id="mass-note">Poids propres issus du modèle de calcul.</p>
+        </footer>
+      </aside>
+
+      <section class="viewport" aria-label="Vue tridimensionnelle">
+        <canvas id="viewer-canvas"></canvas>
+
+        <div class="view-toolbar" aria-label="Orientation de la caméra">
+          <button data-view="iso" class="active" type="button">3D</button>
+          <button data-view="top" type="button">Dessus</button>
+          <button data-view="front" type="button">Côté</button>
+          <button data-view="fit" type="button" aria-label="Recentrer le modèle">
+            Cadrer
+          </button>
+          <button
+            id="explode-toggle"
+            type="button"
+            aria-pressed="false"
+            title="Séparer verticalement les couches constructives"
+          >
+            Éclaté
+          </button>
+        </div>
+
+        <div class="viewer-status" id="viewer-status" role="status">
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="status-text">Chargement du modèle…</span>
+        </div>
+
+        <div class="selection-card" id="selection-card" hidden>
+          <span class="selection-dot" id="selection-dot"></span>
+          <div>
+            <small>Couche sélectionnée</small>
+            <strong id="selection-name"></strong>
+          </div>
+        </div>
+
+        <div class="navigation-help">
+          <span><b>Clic gauche</b> rotation</span>
+          <span><b>Molette</b> zoom</span>
+          <span><b>Clic droit</b> déplacement</span>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

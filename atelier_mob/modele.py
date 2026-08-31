@@ -54,6 +54,18 @@ class AtelierMob:
             (*self.fondations.elements(), *self.plancher.pieces_achat())
         )
 
+    def verifier_structure(self, hypotheses=None):
+        """Lance la pré-vérification ELU/ELS Eurocode 5 du plancher."""
+        from .dimensionnement import verifier_plancher_eurocode5
+
+        return verifier_plancher_eurocode5(self.plancher, hypotheses)
+
+    def inventorier_masses(self, hypotheses=None):
+        """Détaille les masses installées utilisées comme poids propres."""
+        from .masses import inventorier_masses_plancher
+
+        return inventorier_masses_plancher(self.plancher, hypotheses)
+
 
 def creer_atelier_mob(
     positions_platines: tuple[tuple[float, float], ...] | None = None,
