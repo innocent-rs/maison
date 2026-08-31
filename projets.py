@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from atelier_mob import creer_atelier_mob
 from local_batteries import creer_local_batteries
 from local_batteries.debit import exporter_debit, lignes_resume_debit
 from main import make_part
@@ -47,6 +48,16 @@ class DefinitionProjet:
 
 
 PROJETS: dict[str, DefinitionProjet] = {
+    "atelier_mob": DefinitionProjet(
+        identifiant="atelier_mob",
+        construire=creer_atelier_mob,
+        lots={
+            "fondations": lambda projet: projet.nomenclature_fondations(),
+            "plancher": lambda projet: projet.nomenclature_plancher(),
+            "total": lambda projet: projet.nomenclature_achats(),
+        },
+        dossier_sortie=Path("build/atelier_mob"),
+    ),
     "maison": DefinitionProjet(
         identifiant="maison",
         construire=make_part,

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flèche GT24 · Atelier MOB</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='fleche.css') }}">
+  </head>
+  <body>
+    <header class="entete">
+      <div>
+        <p class="surtitre">ATELIER MOB · OUTIL DE CONCEPTION</p>
+        <h1>Flèche d’une poutre <span>GT24</span></h1>
+        <p class="introduction">
+          Poutre rectangulaire simplement appuyée, chargée sur toute sa portée.
+          Calcul élastique instantané avec flexion et cisaillement.
+        </p>
+      </div>
+      <div class="section-miniature" aria-label="Section de poutre 120 par 240 millimètres">
+        <span class="cote-hauteur">h</span>
+        <div></div>
+        <span class="cote-largeur">b</span>
+      </div>
+    </header>
+
+    <main>
+      {% if erreur %}
+        <div class="alerte erreur"><strong>Entrée invalide.</strong> {{ erreur }}</div>
+      {% endif %}
+
+      <section class="grille-principale">
+        <form method="post" class="panneau formulaire">
+          <div class="titre-panneau">
+            <p>01</p>
+            <div><h2>Hypothèses</h2><span>Unités affichées dans chaque champ</span></div>
+          </div>
+
+          <fieldset>
+            <legend>Géométrie</legend>
+            <label>Portée entre appuis <span>mm</span>
+              <input name="portee_mm" type="number" min="1" step="any" required value="{{ valeurs.get('portee_mm', '') }}">
+            </label>
+            <div class="deux-colonnes">
+              <label>Largeur b <span>mm</span>
+                <input name="largeur_mm" type="number" min="1" step="any" required value="{{ valeurs.get('largeur_mm', '') }}">
+              </label>
+              <label>Hauteur h <span>mm</span>
+                <input name="hauteur_mm" type="number" min="1" step="any" required value="{{ valeurs.get('hauteur_mm', '') }}">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>GT24 · valeurs à confirmer</legend>
+            <div class="deux-colonnes">
+              <label>Module E moyen <span>MPa</span>
+                <input name="module_young_mpa" type="number" min="1" step="any" required value="{{ valeurs.get('module_young_mpa', '') }}">
+              </label>
+              <label>Module G moyen <span>MPa</span>
+                <input name="module_cisaillement_mpa" type="number" min="1" step="any" required value="{{ valeurs.get('module_cisaillement_mpa', '') }}">
+              </label>
+            </div>
+            <div class="deux-colonnes">
+              <label>Coefficient κ <span>—</span>
+                <input name="coefficient_cisaillement" type="number" min="0.01" max="1" step="any" required value="{{ valeurs.get('coefficient_cisaillement', '') }}">
+              </label>
+              <label>Masse volumique <span>kg/m³</span>
+                <input name="masse_volumique_kg_m3" type="number" min="1" step="any" required value="{{ valeurs.get('masse_volumique_kg_m3', '') }}">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Charges de service</legend>
+            <div class="deux-colonnes">
+              <label>Charge permanente G <span>kN/m²</span>
+                <input name="charge_permanente_kN_m2" type="number" min="0" step="any" required value="{{ valeurs.get('charge_permanente_kN_m2', '') }}">
+              </label>
+              <label>Exploitation Q <span>kN/m²</span>
+                <input name="charge_exploitation_kN_m2" type="number" min="0" step="any" required value="{{ valeurs.get('charge_exploitation_kN_m2', '') }}">
+              </label>
+            </div>
+            <div class="deux-colonnes">
+              <label>Largeur tributaire <span>m</span>
+                <input name="largeur_tributaire_m" type="number" min="0.01" step="any" required value="{{ valeurs.get('largeur_tributaire_m', '') }}">
+              </label>
+              <label>Charge centrale <span>kN · cas Q</span>
+                <input name="charge_ponctuelle_kN" type="number" min="0" step="any" required value="{{ valeurs.get('charge_ponctuelle_kN', '') }}">
+              </label>
+            </div>
+            <label>Limite indicative <span>L / diviseur</span>
+              <input name="limite_fleche_diviseur" type="number" min="1" step="any" required value="{{ valeurs.get('limite_fleche_diviseur', '') }}">
+            </label>
+            <label class="case">
+              <input name="inclure_poids_propre" type="checkbox" {% if valeurs.get('inclure_poids_propre') %}checked{% endif %}>
+              Ajouter le poids propre de la poutre à G
+            </label>
+          </fieldset>
+
+          <button type="submit">Recalculer <span>→</span></button>
+        </form>
+
+        <div class="resultats">
+          {% if resultat %}
+            <section class="panneau synthese">
+              <div class="titre-panneau">
+                <p>02</p>
+                <div><h2>Résultat de service</h2><span>Combinaison non pondérée G + Q</span></div>
+              </div>
+              <div class="valeur-majeure">
+                <div><strong>{{ '%.2f'|format(resultat.service.fleche_totale_mm) }}</strong><span>mm</span></div>
+                <p>flèche maximale au milieu</p>
+              </div>
+              <div class="jauge {% if not resultat.service.respecte_limite %}depassee{% endif %}">
+                <div style="width: {{ [resultat.service.taux_limite * 100, 100]|min }}%"></div>
+              </div>
+              <div class="limite">
+                <span>{{ '%.0f'|format(resultat.service.taux_limite * 100) }} % de la limite</span>
+                <span>L/{{ '%.0f'|format(resultat.hypotheses.limite_fleche_diviseur) }} = {{ '%.2f'|format(resultat.service.limite_fleche_mm) }} mm</span>
+              </div>
+              <dl class="indicateurs">
+                <div><dt>Flexion</dt><dd>{{ '%.2f'|format(resultat.service.fleche_flexion_mm) }} mm</dd></div>
+                <div><dt>Cisaillement</dt><dd>{{ '%.2f'|format(resultat.service.fleche_cisaillement_mm) }} mm</dd></div>
+                <div><dt>Moment max.</dt><dd>{{ '%.2f'|format(resultat.service.moment_max_kN_m) }} kN·m</dd></div>
+                <div><dt>Contrainte σ<sub>m</sub></dt><dd>{{ '%.2f'|format(resultat.service.contrainte_flexion_mpa) }} MPa</dd></div>
+                <div><dt>Réaction / appui</dt><dd>{{ '%.2f'|format(resultat.service.reaction_par_appui_kN) }} kN</dd></div>
+                <div><dt>Poids propre</dt><dd>{{ '%.3f'|format(resultat.hypotheses.poids_propre_kN_m) }} kN/m</dd></div>
+              </dl>
+            </section>
+
+            <section class="panneau courbe">
+              <div class="titre-panneau">
+                <p>03</p>
+                <div><h2>Déformée</h2><span>Amplifiée automatiquement · G + Q</span></div>
+              </div>
+              <svg viewBox="0 0 {{ graphique.largeur }} {{ graphique.hauteur }}" role="img" aria-label="Déformée de la poutre">
+                <line class="axe-poutre" x1="{{ graphique.gauche }}" y1="{{ graphique.haut }}" x2="{{ graphique.largeur - graphique.droite }}" y2="{{ graphique.haut }}" />
+                <line class="appui" x1="{{ graphique.gauche }}" y1="{{ graphique.haut }}" x2="{{ graphique.gauche }}" y2="{{ graphique.haut + graphique.hauteur_utile + 8 }}" />
+                <line class="appui" x1="{{ graphique.largeur - graphique.droite }}" y1="{{ graphique.haut }}" x2="{{ graphique.largeur - graphique.droite }}" y2="{{ graphique.haut + graphique.hauteur_utile + 8 }}" />
+                <polyline class="deformee" points="{{ graphique.points }}" />
+                <text x="{{ graphique.gauche }}" y="{{ graphique.hauteur - 8 }}">0</text>
+                <text text-anchor="middle" x="{{ graphique.gauche + graphique.largeur_utile / 2 }}" y="{{ graphique.hauteur - 8 }}">{{ '%.0f'|format(resultat.hypotheses.portee_mm / 2) }} mm</text>
+                <text text-anchor="end" x="{{ graphique.largeur - graphique.droite }}" y="{{ graphique.hauteur - 8 }}">{{ '%.0f'|format(resultat.hypotheses.portee_mm) }} mm</text>
+              </svg>
+            </section>
+
+            <section class="panneau cas">
+              <div class="titre-panneau">
+                <p>04</p>
+                <div><h2>Détail par cas</h2><span>Superposition linéaire</span></div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Cas</th><th>q</th><th>P</th><th>Flèche</th><th>Réaction/appui</th></tr></thead>
+                  <tbody>
+                    {% for cas in (resultat.permanente, resultat.exploitation, resultat.service) %}
+                      <tr>
+                        <th>{{ cas.nom }}</th>
+                        <td>{{ '%.3f'|format(cas.charge_lineique_kN_m) }} kN/m</td>
+                        <td>{{ '%.2f'|format(cas.charge_ponctuelle_kN) }} kN</td>
+                        <td>{{ '%.2f'|format(cas.fleche_totale_mm) }} mm</td>
+                        <td>{{ '%.2f'|format(cas.reaction_par_appui_kN) }} kN</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          {% else %}
+            <section class="panneau vide"><p>Corrigez les valeurs pour afficher le calcul.</p></section>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="avertissements">
+        <article>
+          <h2>Ce que calcule l’outil</h2>
+          <p>Une poutre prismatique sur deux appuis simples, en élasticité linéaire. Les charges surfaciques sont multipliées par la largeur tributaire. La charge ponctuelle est centrée.</p>
+        </article>
+        <article>
+          <h2>Ce qu’il ne vérifie pas</h2>
+          <p>Résistance, fluage, vibrations, stabilité, entailles, perçages, assemblages, feu, humidité et combinaisons Eurocode 5. La comparaison à L/300 est seulement indicative.</p>
+        </article>
+        <article class="materiau">
+          <h2>GT24 ou LVL ?</h2>
+          <p>Le GT24 Douglas trouvé au catalogue est décrit comme un bois contre-collé. Le LVL/lamibois est une famille différente. Confirmez E, G, la classe exacte et les performances sur la déclaration du produit réellement acheté.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer>Atelier MOB · calcul de préconception · unités N–mm–MPa</footer>
+  </body>
+</html>

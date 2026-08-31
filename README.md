@@ -11,6 +11,7 @@ home_framework/   assemblage déclaratif, manuel, BOM, chiffrage et optimisation
 catalogues/       données commerciales partagées, hors du moteur
 maison/            projet de maison en A
 local_batteries/   projet de local technique 3 × 3 m
+atelier_mob/       projet d'atelier en ossature bois
 ```
 
 Le package `home_framework` ne dépend d'aucun projet. Les anciens modules

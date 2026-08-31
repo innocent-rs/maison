@@ -60,6 +60,14 @@ run:
 local-batteries:
     python -m local_batteries.main
 
+# Affiche l'état courant de l'atelier en ossature bois
+atelier-mob:
+    python -m atelier_mob.main
+
+# Lance le calculateur web de flèche GT24 sur http://127.0.0.1:5050
+atelier-mob-fleche:
+    python -m atelier_mob.webapp
+
 # Exporte les nomenclatures du local batteries
 local-batteries-bom:
     python -m local_batteries.bom

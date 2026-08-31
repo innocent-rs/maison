@@ -4,6 +4,19 @@ from projets import PROJETS, resoudre_projet_et_lot
 
 
 class TestRegistreProjets(unittest.TestCase):
+    def test_atelier_mob_expose_ses_fondations(self) -> None:
+        definition = PROJETS["atelier_mob"]
+        projet = definition.construire()
+
+        self.assertEqual(
+            definition.lots_demandes("tous"),
+            ("fondations", "plancher", "total"),
+        )
+        self.assertEqual(
+            definition.nomenclature(projet, "fondations").nombre_pieces,
+            24,
+        )
+
     def test_local_batteries_expose_sa_bom_au_framework_commun(self) -> None:
         definition = PROJETS["local_batteries"]
         projet = definition.construire()
