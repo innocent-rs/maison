@@ -1,12 +1,14 @@
 """Composants constructifs réutilisables entre projets."""
 
-from .bois import Arbaletrier, Madrier, PoutreI, Tasseau
+from .bois import Arbaletrier, EntretoisePoutreI, Madrier, PoutreI, Tasseau
 from .connecteurs import (
     FerrurePiedAFrame,
     KitTirantAFrame,
     PlanFixationEWH,
     PlanFixationSAI,
     PointeAncrageCNA4x35,
+    PointeEntretoise2_5x80,
+    PointeEntretoise3_1x90,
     SabotEWH,
     SabotSAI500_120_2,
     VisBoisOSB4x35,
@@ -29,6 +31,7 @@ __all__ = [
     "Arbaletrier",
     "DalleOSB",
     "ElementPlancher",
+    "EntretoisePoutreI",
     "FerrurePiedAFrame",
     "KitTirantAFrame",
     "Madrier",
@@ -37,6 +40,8 @@ __all__ = [
     "PlancherAFrame",
     "PlancherBois",
     "PointeAncrageCNA4x35",
+    "PointeEntretoise2_5x80",
+    "PointeEntretoise3_1x90",
     "PoutreI",
     "PanneauFondCaissonOSB",
     "PanneauPlancherOSB",

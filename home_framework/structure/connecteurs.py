@@ -324,6 +324,44 @@ class PointeAncrageCNA4x35:
 
 
 @dataclass(frozen=True, slots=True)
+class PointeEntretoise2_5x80:
+    """Pointe de liaison placée de chaque côté de l'âme d'une entretoise."""
+
+    diametre: float = 2.5
+    longueur: float = 80.0
+    materiau: str = "Acier galvanisé"
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference="POINTE-ENTRETOISE-2.5X80",
+            designation="Pointe pour entretoise 2,5 × 80 mm",
+            categorie="Fixation / pointe entretoise",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.diametre,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PointeEntretoise3_1x90:
+    """Pointe de liaison des membrures d'une entretoise en poutre en I."""
+
+    diametre: float = 3.1
+    longueur: float = 90.0
+    materiau: str = "Acier galvanisé"
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference="POINTE-ENTRETOISE-3.1X90",
+            designation="Pointe de membrure pour entretoise 3,1 × 90 mm",
+            categorie="Fixation / pointe entretoise",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.diametre,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class VisBoisOSB4x35:
     """SPAX universelle à filetage partiel pour les fonds OSB de 12 mm."""
 

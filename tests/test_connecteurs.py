@@ -6,6 +6,8 @@ from home_framework.structure import (
     PlanFixationEWH,
     PlanFixationSAI,
     PointeAncrageCNA4x35,
+    PointeEntretoise2_5x80,
+    PointeEntretoise3_1x90,
     SabotEWH,
     SabotSAI500_120_2,
     VisBoisOSB4x35,
@@ -67,6 +69,15 @@ class TestConnecteurs(unittest.TestCase):
 
         self.assertEqual(pointe.article_bom().reference, "SIMPSON-CNA4.0X35")
         self.assertEqual(pointe.article_bom().longueur_mm, 35)
+
+    def test_pointes_des_entretoises(self) -> None:
+        pointe_ame = PointeEntretoise2_5x80()
+        pointe_membrure = PointeEntretoise3_1x90()
+
+        self.assertEqual(pointe_ame.article_bom().longueur_mm, 80)
+        self.assertEqual(pointe_ame.article_bom().largeur_mm, 2.5)
+        self.assertEqual(pointe_membrure.article_bom().longueur_mm, 90)
+        self.assertEqual(pointe_membrure.article_bom().largeur_mm, 3.1)
 
     def test_vis_osb_4x35(self) -> None:
         vis = VisBoisOSB4x35()

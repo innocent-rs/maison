@@ -3,14 +3,14 @@
     "name": "Atelier MOB — plancher bois",
     "widthM": 7.0,
     "lengthM": 15.0,
-    "objectCount": 645,
+    "objectCount": 813,
     "coordinateUnit": "m"
   },
   "summary": {
-    "modeledMassKg": 4768.779,
-    "floorMassIncludingFastenersKg": 4788.446,
+    "modeledMassKg": 4918.676,
+    "floorMassIncludingFastenersKg": 4940.337,
     "foundationPlatesMassKg": 37.68,
-    "totalMassIncludingFastenersKg": 4826.126,
+    "totalMassIncludingFastenersKg": 4978.017,
     "floorAreaM2": 105.0
   },
   "layers": [
@@ -67,6 +67,19 @@
       "unitMassKg": 8.236
     },
     {
+      "id": "entretoises_i",
+      "label": "Entretoises en I",
+      "description": "Une rangée pleine hauteur au milieu de chaque travée",
+      "color": "#ad7958",
+      "file": "entretoises_i.glb",
+      "count": 84,
+      "visible": true,
+      "explodeOffsetM": 0.8,
+      "massKg": 175.924,
+      "linearMassKgM": 4.12,
+      "unitMassKg": null
+    },
+    {
       "id": "connecteurs_solives",
       "label": "Étriers des solives",
       "description": "Étriers Simpson EWH aux abouts des solives en I",
@@ -98,10 +111,10 @@
       "description": "Panneaux OSB de 12 mm sous l’isolation",
       "color": "#b88a50",
       "file": "fonds_osb.glb",
-      "count": 84,
+      "count": 168,
       "visible": true,
       "explodeOffsetM": -0.8,
-      "massKg": 660.852,
+      "massKg": 657.173,
       "linearMassKgM": null,
       "unitMassKg": null
     },
@@ -114,9 +127,9 @@
       "count": 168,
       "visible": true,
       "explodeOffsetM": 1.6,
-      "massKg": 746.844,
+      "massKg": 724.496,
       "linearMassKgM": null,
-      "unitMassKg": 4.446
+      "unitMassKg": 4.312
     },
     {
       "id": "osb_superieur",

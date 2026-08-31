@@ -24,25 +24,32 @@ class TestMassesAtelierMob(unittest.TestCase):
             for ligne in self.rapport.lignes
             if ligne.reference.startswith("TAS-60x40")
         )
+        entretoise = next(
+            ligne
+            for ligne in self.rapport.lignes
+            if ligne.reference.startswith("ENT-SJI-60x240")
+        )
 
         self.assertAlmostEqual(madrier.masse_lineique_kg_m, 14.4)
         self.assertAlmostEqual(solive.masse_lineique_kg_m, 4.12)
         self.assertAlmostEqual(tasseau.masse_lineique_kg_m, 1.2)
+        self.assertAlmostEqual(entretoise.masse_lineique_kg_m, 4.12)
+        self.assertEqual(entretoise.famille_charge, "charge_surfacique")
 
     def test_masse_totale_et_charge_surfacique_sont_agregees(self) -> None:
-        self.assertAlmostEqual(self.rapport.masse_totale_kg, 4_788.446, places=3)
+        self.assertAlmostEqual(self.rapport.masse_totale_kg, 4_940.337, places=3)
         self.assertAlmostEqual(
             self.rapport.masse_madriers_primaires_kg,
             1_210.2912,
         )
         self.assertAlmostEqual(
             self.rapport.charge_surfacique_hors_madriers_kN_m2,
-            0.334301896,
+            0.348492847,
         )
         self.assertAlmostEqual(self.rapport.masse_solives_i_kg, 634.20808)
         self.assertAlmostEqual(
             self.rapport.charge_surfacique_couches_hors_solives_kN_m2,
-            0.275048741,
+            0.289239692,
         )
 
     def test_la_verification_ajoute_les_charges_rapportees_sans_double_compter(self) -> None:

@@ -34,6 +34,8 @@ def creer_plancher_atelier(
         caissons_uniformes=True,
         inclure_connecteurs=True,
         inclure_solives_i=True,
+        inclure_entretoises_solives_i=True,
+        nombre_rangees_entretoises_par_travee=1,
         inclure_connecteurs_solives_i=True,
         inclure_osb_caissons=True,
         inclure_isolant_caissons=True,

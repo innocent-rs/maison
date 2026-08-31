@@ -1,6 +1,7 @@
 import unittest
 
 from atelier_mob import (
+    EntretoisePoutreI,
     FondationsPieuxVisses,
     GeometrieAtelierMob,
     Madrier,
@@ -72,6 +73,8 @@ class TestFondationsAtelierMob(unittest.TestCase):
         self.assertLessEqual(plancher.entraxe_solives_i, 573)
         self.assertAlmostEqual(plancher.longueur_solives_i, 1_999.142857, places=5)
         self.assertTrue(plancher.inclure_osb_caissons)
+        self.assertTrue(plancher.inclure_entretoises_solives_i)
+        self.assertEqual(plancher.nombre_entretoises_solives_i, 84)
         self.assertTrue(plancher.inclure_isolant_caissons)
         self.assertTrue(plancher.inclure_osb_plancher)
 
@@ -85,9 +88,52 @@ class TestFondationsAtelierMob(unittest.TestCase):
         self.assertEqual(plancher.epaisseur_osb_caissons, 12)
         self.assertEqual(plancher.epaisseur_isolant_nominale, 145)
         self.assertEqual(plancher.epaisseur_osb_plancher, 22)
-        self.assertEqual(plancher.nombre_panneaux_osb_caissons, 84)
+        self.assertEqual(plancher.nombre_panneaux_osb_caissons, 168)
         self.assertEqual(plancher.nombre_panneaux_isolant, 168)
         self.assertEqual(plancher.nombre_panneaux_osb_plancher, 98)
+
+    def test_entretoises_coupent_les_caissons_sans_collision(self) -> None:
+        plancher = creer_atelier_mob().plancher
+        elements = plancher.elements()
+        entretoises = [
+            element
+            for element in elements
+            if isinstance(element.piece, EntretoisePoutreI)
+        ]
+        contenus_caissons = [
+            element
+            for element in elements
+            if element.nom.startswith(("Fond OSB", "Isolant Isonat"))
+        ]
+
+        self.assertEqual(len(entretoises), 84)
+        self.assertEqual(
+            {round(element.forme.bounding_box().size.Y) for element in entretoises},
+            {504, 530},
+        )
+
+        def boites_se_chevauchent(gauche, droite) -> bool:
+            a = gauche.bounding_box()
+            b = droite.bounding_box()
+            return not (
+                a.max.X <= b.min.X
+                or a.min.X >= b.max.X
+                or a.max.Y <= b.min.Y
+                or a.min.Y >= b.max.Y
+                or a.max.Z <= b.min.Z
+                or a.min.Z >= b.max.Z
+            )
+
+        self.assertTrue(
+            all(
+                not boites_se_chevauchent(entretoise.forme, contenu.forme)
+                or (entretoise.forme & contenu.forme).volume < 1e-6
+                for entretoise in entretoises
+                for contenu in contenus_caissons
+            )
+        )
+        self.assertEqual(plancher.nombre_pointes_entretoises_2_5x80, 168)
+        self.assertEqual(plancher.nombre_pointes_entretoises_3_1x90, 168)
 
 
 if __name__ == "__main__":

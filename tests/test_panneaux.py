@@ -73,6 +73,24 @@ class TestDalleOSB(unittest.TestCase):
         self.assertEqual(panneau.volume_mm3, 423 * 1_479 * 12)
         self.assertTrue(panneau.article_bom().reference.endswith("-RECT"))
 
+    def test_fond_caisson_decoupe_autour_des_ewh_a_un_seul_about(self) -> None:
+        panneau = PanneauFondCaissonOSB(
+            epaisseur=12,
+            largeur=553,
+            longueur=994,
+            encoches_debut=True,
+            encoches_fin=False,
+        )
+        volume_plein = 553 * 994 * 12
+
+        self.assertAlmostEqual(
+            panneau.construire().volume,
+            volume_plein - 2 * 82 * 47 * 12,
+        )
+        self.assertTrue(
+            panneau.article_bom().reference.endswith("-ENC-UN-BOUT")
+        )
+
     def test_panneau_plancher_osb_22_mm(self) -> None:
         panneau = PanneauPlancherOSB(
             epaisseur=22,

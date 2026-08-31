@@ -1,8 +1,9 @@
 # Viewer Three.js — atelier MOB
 
 Viewer web indépendant du modèle CAO `atelier_mob`. Les éléments sont exportés
-en neuf couches GLB activables séparément : fondations, poutres primaires,
-connecteurs, solives en I, tasseaux, fonds OSB, isolant et OSB supérieur.
+en dix couches GLB activables séparément : fondations, poutres primaires,
+connecteurs, solives en I, entretoises pleine hauteur, tasseaux, fonds OSB,
+isolant et OSB supérieur.
 Le bouton **Éclaté** sépare verticalement ces sous-ensembles et recadre
 automatiquement la caméra ; un second clic restitue l’assemblage normal.
 

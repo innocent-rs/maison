@@ -113,6 +113,13 @@ class TestPlancherAFrame(unittest.TestCase):
             plancher.entraxe_traverses - plancher.section_largeur,
         )
 
+    def test_entretoises_exigent_les_solives_i(self) -> None:
+        with self.assertRaisesRegex(ValueError, "entretoises exigent"):
+            PlancherAFrame(
+                GeometrieAFrame(),
+                inclure_entretoises_solives_i=True,
+            )
+
     def test_fonds_osb_des_caissons_interieurs(self) -> None:
         plancher = PlancherAFrame(
             GeometrieAFrame(),

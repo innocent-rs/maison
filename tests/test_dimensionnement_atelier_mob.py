@@ -21,7 +21,7 @@ class TestDimensionnementEurocode5Atelier(unittest.TestCase):
         )
 
         self.assertEqual(finale.statut, StatutVerification.CONFORME)
-        self.assertAlmostEqual(finale.taux_utilisation, 0.979, places=3)
+        self.assertAlmostEqual(finale.taux_utilisation, 0.984, places=3)
         self.assertTrue(rapport.conforme_calculs)
         self.assertFalse(rapport.validation_automatique)
 
@@ -40,11 +40,11 @@ class TestDimensionnementEurocode5Atelier(unittest.TestCase):
             for verification in rapport.verifications
         }
 
-        self.assertAlmostEqual(taux["flexion"], 0.813, places=3)
-        self.assertAlmostEqual(taux["cisaillement"], 0.396, places=3)
+        self.assertAlmostEqual(taux["flexion"], 0.816, places=3)
+        self.assertAlmostEqual(taux["cisaillement"], 0.398, places=3)
         self.assertAlmostEqual(
             taux["compression perpendiculaire (kc,90 = 1,0)"],
-            0.887,
+            0.891,
             places=3,
         )
 
@@ -82,6 +82,26 @@ class TestDimensionnementEurocode5Atelier(unittest.TestCase):
                 and verification.statut is StatutVerification.NON_CONFORME
                 for verification in rapport.verifications
             )
+        )
+
+    def test_deux_ewh_opposes_sont_controles_dimensionnellement(self) -> None:
+        rapport = self.atelier.verifier_structure()
+        controles = [
+            verification
+            for verification in rapport.verifications
+            if verification.element.startswith("Deux EWH240/61 opposés")
+        ]
+
+        self.assertEqual(len(controles), 2)
+        self.assertTrue(
+            all(
+                verification.statut is StatutVerification.CONFORME
+                for verification in controles
+            )
+        )
+        self.assertEqual(
+            {verification.sollicitation for verification in controles},
+            {70, 80},
         )
 
     def test_poutres_de_rive_restent_non_verifiees_sans_charges_de_toiture(self) -> None:

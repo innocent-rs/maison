@@ -1,6 +1,6 @@
 import unittest
 
-from home_framework.structure import PoutreI
+from home_framework.structure import EntretoisePoutreI, PoutreI
 
 
 class TestPoutreI(unittest.TestCase):
@@ -24,6 +24,15 @@ class TestPoutreI(unittest.TestCase):
     def test_dimensions_invalides(self) -> None:
         with self.assertRaises(ValueError):
             PoutreI(longueur=1_000, hauteur=70)
+
+    def test_entretoise_conserve_la_section_mais_a_une_reference_distincte(self) -> None:
+        entretoise = EntretoisePoutreI(longueur=504)
+
+        self.assertEqual(tuple(entretoise.construire().bounding_box().size), (504, 60, 240))
+        self.assertEqual(
+            entretoise.article_bom().reference,
+            "ENT-SJI-60x240-L504",
+        )
 
 
 if __name__ == "__main__":

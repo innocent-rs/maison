@@ -356,3 +356,30 @@ class PoutreI:
             hauteur_mm=self.hauteur,
             volume_mm3=self.volume_mm3,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class EntretoisePoutreI(PoutreI):
+    """Tronçon de poutre en I employé comme entretoise pleine hauteur."""
+
+    @property
+    def designation(self) -> str:
+        modele = self.modele or (
+            f"STEICOjoist SJ{self.largeur_membrure:g}/{self.hauteur:g}"
+        )
+        return f"Entretoise en poutre I {modele} — L {self.longueur:g} mm"
+
+    def article_bom(self) -> ArticleBOM:
+        return ArticleBOM(
+            reference=(
+                f"ENT-SJI-{self.largeur_membrure:g}x{self.hauteur:g}"
+                f"-L{self.longueur:g}"
+            ).replace(".", "_"),
+            designation=self.designation,
+            categorie="Bois / entretoise poutre en I",
+            materiau=self.materiau,
+            longueur_mm=self.longueur,
+            largeur_mm=self.largeur_membrure,
+            hauteur_mm=self.hauteur,
+            volume_mm3=self.volume_mm3,
+        )

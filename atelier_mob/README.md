@@ -28,12 +28,19 @@ Le modèle courant comprend, de bas en haut :
   (`R = 4,00 m²·K/W` déclaré pour cette épaisseur) ;
 - des solives en I STEICOjoist `SJ60/240`, réparties à environ `564 mm`
   d'entraxe ;
+- une rangée médiane d'entretoises pleine hauteur en STEICOjoist dans chacune
+  des sept travées, avec douze blocs par rangée ;
 - un plancher porteur en OSB 3 rainuré-languetté de `22 mm`.
 
 Les deux poutres longitudinales et les huit traverses primaires sont des
 éléments de `120 × 240 mm`. Les solives en I sont découpées en sept travées de
 `1 999 mm` environ. Le calepinage à huit traverses maintient les joints des
 dalles supérieures de `2 500 mm` sur des appuis.
+
+Les `84` entretoises comprennent `70` coupes de `504 mm` entre solives et `14`
+coupes de rive de `530 mm`. Chaque fond OSB est divisé au droit de l'âme de
+l'entretoise et repose sur sa membrure basse. L'isolant est également découpé
+de part et d'autre de la membrure afin qu'aucun solide ne se chevauche.
 
 Les poutres longitudinales de `15 000 mm` restent représentées continues
 pour lire le chemin des charges. Leur débit transportable, leurs aboutages au
@@ -125,6 +132,7 @@ pertinente :
 
 - madrier `120×240` : `14,40 kg/m`, calculé avec `500 kg/m³` ;
 - STEICOjoist SJ60/240 : `4,12 kg/m`, valeur fabricant ;
+- entretoises STEICOjoist : `4,12 kg/m`, comptées comme charge surfacique ;
 - tasseau `60×40` : `1,20 kg/m` ;
 - OSB : volume CAO × `600 kg/m³` ;
 - Isonat : volume réellement posé × `55 kg/m³` ;
@@ -133,13 +141,14 @@ pertinente :
 - vis et pointes : estimation par la tige cylindrique en acier, tête non
   comprise et signalée comme telle.
 
-Le plancher installé représente environ `4 788,4 kg`, dont `1 210,3 kg` de
-madriers primaires et `634,2 kg` de solives en I. Les couches et accessoires
-hors madriers et solives donnent `0,275 kN/m²`. Après ajout de `0,20 kN/m²` de
-charges rapportées, une solive reçoit donc `0,475 kN/m²` plus son propre
-`4,12 kg/m`. Une traverse reçoit en plus le poids des solives, soit
-`0,534 kN/m²`, puis son propre `14,40 kg/m`. Cette séparation évite de compter
-deux fois le poids de la pièce en cours de vérification.
+Le plancher installé représente environ `4 940,3 kg`, dont `1 210,3 kg` de
+madriers primaires, `634,2 kg` de solives en I et `175,9 kg` d'entretoises.
+Les couches et accessoires hors madriers et solives longitudinales donnent
+`0,289 kN/m²`. Après ajout de `0,20 kN/m²` de charges rapportées, une solive
+reçoit donc `0,489 kN/m²` plus son propre `4,12 kg/m`. Une traverse reçoit en
+plus le poids des solives, soit `0,548 kN/m²`, puis son propre `14,40 kg/m`.
+Cette séparation évite de compter deux fois le poids de la pièce en cours de
+vérification.
 
 Une valeur forfaitaire reste possible avec
 `charge_permanente_surfacique_kN_m2=...`; elle remplace alors explicitement le
@@ -152,16 +161,18 @@ machines :
 
 | Élément / critère | Taux | État |
 |---|---:|---|
-| Traverse 120×240 — flexion ELU | 81,3 % | conforme |
-| Traverse 120×240 — cisaillement ELU | 39,6 % | conforme |
-| Traverse — compression sur platine centrale | 88,7 % | conforme, proche limite |
-| SAI500/120/2 — réaction verticale | 89,6 % | conforme, proche limite |
-| Traverse — flèche instantanée | 70,3 % | conforme |
-| Traverse — flèche finale avec fluage | 97,9 % | conforme, très proche limite |
+| Traverse 120×240 — flexion ELU | 81,6 % | conforme |
+| Traverse 120×240 — cisaillement ELU | 39,8 % | conforme |
+| Traverse — compression sur platine centrale | 89,1 % | conforme, proche limite |
+| SAI500/120/2 — réaction verticale | 89,9 % | conforme, proche limite |
+| Traverse — flèche instantanée | 70,6 % | conforme |
+| Traverse — flèche finale avec fluage | 98,4 % | conforme, très proche limite |
 | SJ60/240 — flexion ELU | 14,6 % | conforme |
-| SJ60/240 — cisaillement ELU | 45,2 % | conforme |
-| EWH240/61 — réaction verticale | 37,2 % | conforme |
-| SJ60/240 — flèche finale | 22,2 % | conforme |
+| SJ60/240 — cisaillement ELU | 45,4 % | conforme |
+| EWH240/61 — réaction verticale | 37,3 % | conforme |
+| EWH opposés — non-croisement des pointes | 58,3 % | géométriquement conforme |
+| EWH opposés — non-recouvrement des brides | 66,7 % | géométriquement conforme |
+| SJ60/240 — flèche finale | 22,3 % | conforme |
 
 Le rapport différencie deux notions :
 

@@ -262,6 +262,7 @@ document.querySelector("#show-structure").addEventListener("click", () => {
     "poutres_primaires",
     "connecteurs_primaires",
     "solives_i",
+    "entretoises_i",
     "connecteurs_solives",
     "tasseaux",
   ]);
@@ -274,6 +275,7 @@ document.querySelector("#show-caissons").addEventListener("click", () => {
     "poutres_primaires",
     "connecteurs_primaires",
     "solives_i",
+    "entretoises_i",
     "connecteurs_solives",
     "tasseaux",
     "fonds_osb",

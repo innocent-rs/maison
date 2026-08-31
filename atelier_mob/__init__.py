@@ -22,11 +22,12 @@ from .plancher import (
     creer_plancher_atelier,
     positions_pieux_pour_plancher,
 )
-from home_framework.structure.bois import Madrier, PoutreI
+from home_framework.structure.bois import EntretoisePoutreI, Madrier, PoutreI
 
 __all__ = [
     "AtelierMob",
     "DureeCharge",
+    "EntretoisePoutreI",
     "FondationsPieuxVisses",
     "GeometrieAtelierAFrame",
     "GeometrieAtelierMob",

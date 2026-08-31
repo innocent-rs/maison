@@ -3,7 +3,12 @@
 from dataclasses import dataclass
 from math import pi
 
-from home_framework.structure.bois import Madrier, PoutreI, Tasseau
+from home_framework.structure.bois import (
+    EntretoisePoutreI,
+    Madrier,
+    PoutreI,
+    Tasseau,
+)
 from home_framework.structure.connecteurs import SabotEWH, SabotSAI500_120_2
 from home_framework.structure.isolation import PanneauIsonatFlex55
 from home_framework.structure.panneaux import (
@@ -131,6 +136,16 @@ def _masse_element(
             lineique,
             "madrier_primaire",
             f"section × {hypotheses.masse_volumique_bois_kg_m3:g} kg/m³",
+        )
+    if isinstance(piece, EntretoisePoutreI):
+        if (piece.largeur_membrure, piece.hauteur) != (60, 240):
+            raise ValueError("masse linéique fabricant absente pour cette entretoise")
+        lineique = hypotheses.masse_lineique_sj60_240_kg_m
+        return (
+            lineique * piece.longueur / 1_000,
+            lineique,
+            "charge_surfacique",
+            "masse linéique fabricant STEICO SJ60/240",
         )
     if isinstance(piece, PoutreI):
         if (piece.largeur_membrure, piece.hauteur) != (60, 240):

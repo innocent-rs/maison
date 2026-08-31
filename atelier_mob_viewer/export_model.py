@@ -64,6 +64,14 @@ LAYERS = (
         explode_offset_m=0.8,
     ),
     LayerDefinition(
+        "entretoises_i",
+        "Entretoises en I",
+        "Une rangée pleine hauteur au milieu de chaque travée",
+        "#ad7958",
+        ("EntretoisePoutreI",),
+        explode_offset_m=0.8,
+    ),
+    LayerDefinition(
         "connecteurs_solives",
         "Étriers des solives",
         "Étriers Simpson EWH aux abouts des solives en I",

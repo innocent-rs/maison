@@ -91,6 +91,8 @@ class PanneauFondCaissonOSB:
     longueur_encoche: float = 82.0
     largeur_encoche: float = 47.0
     avec_encoches: bool = True
+    encoches_debut: bool = True
+    encoches_fin: bool = True
     materiau: str = "Panneau structurel OSB 3 à bords droits (BD)"
 
     def __post_init__(self) -> None:
@@ -124,7 +126,11 @@ class PanneauFondCaissonOSB:
             self.epaisseur,
             align=(Align.MIN, Align.MIN, Align.MIN),
         )
-        for x in (0, self.longueur - self.longueur_encoche):
+        positions_x = (
+            *((0,) if self.encoches_debut else ()),
+            *((self.longueur - self.longueur_encoche,) if self.encoches_fin else ()),
+        )
+        for x in positions_x:
             for y in (-demi_largeur, demi_largeur - self.largeur_encoche):
                 panneau -= Pos(x, y, 0) * encoche
         return panneau
@@ -133,7 +139,8 @@ class PanneauFondCaissonOSB:
     def volume_mm3(self) -> float:
         surface = self.longueur * self.largeur
         if self.avec_encoches:
-            surface -= 4 * self.longueur_encoche * self.largeur_encoche
+            nombre_encoches = 2 * (self.encoches_debut + self.encoches_fin)
+            surface -= nombre_encoches * self.longueur_encoche * self.largeur_encoche
         return surface * self.epaisseur
 
     def article_bom(self) -> ArticleBOM:
@@ -143,7 +150,15 @@ class PanneauFondCaissonOSB:
         ).replace(".", "_")
         if not self.avec_encoches:
             reference += "-RECT"
-        suffixe = "" if self.avec_encoches else " — sans encoche"
+            suffixe = " — sans encoche"
+        elif self.encoches_debut and self.encoches_fin:
+            suffixe = ""
+        elif self.encoches_debut or self.encoches_fin:
+            reference += "-ENC-UN-BOUT"
+            suffixe = " — encoches à un about"
+        else:
+            reference += "-RECT"
+            suffixe = " — sans encoche"
         return ArticleBOM(
             reference=reference,
             designation=(

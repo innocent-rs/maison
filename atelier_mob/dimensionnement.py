@@ -10,6 +10,7 @@ from enum import StrEnum
 from math import isfinite
 
 from home_framework.structure.bois import PoutreI
+from home_framework.structure.connecteurs import PointeAncrageCNA4x35, SabotEWH
 from home_framework.structure.plancher import PlancherBois
 
 from .masses import HypothesesMasses, RapportMasses, inventorier_masses_plancher
@@ -21,6 +22,9 @@ SOURCE_EC5 = (
 )
 SOURCE_STEICO = "STEICO ETA-20/0995, tableaux C9 à C11 — SJ60/240"
 SOURCE_EWH = "Simpson Strong-Tie EWH — montage TF standard, R1,k = 11 kN"
+SOURCE_EWH_DOS_A_DOS = (
+    "Simpson Strong-Tie EWH — contrôle géométrique du montage TF dos à dos"
+)
 SOURCE_SAI = (
     "Simpson Strong-Tie SAI500/120/2 — fixation totale, R1,k = 29,7 kN"
 )
@@ -590,6 +594,41 @@ def verifier_plancher_eurocode5(
             "Montage à brides supérieures et plan de pointage standard.",
         )
     )
+    ewh = SabotEWH(
+        largeur_interieure=plancher.largeur_membrure_solives_i + 1,
+        hauteur=plancher.hauteur_solives_i,
+    )
+    pointe_ewh = PointeAncrageCNA4x35()
+    verifications.extend(
+        (
+            _verification(
+                "Deux EWH240/61 opposés sur traverse 120×240",
+                "non-croisement des pointes opposées",
+                "constructibilité",
+                2 * pointe_ewh.longueur,
+                plancher.section_largeur,
+                "mm",
+                SOURCE_EWH_DOS_A_DOS,
+                (
+                    f"Noyau résiduel théorique : "
+                    f"{plancher.section_largeur - 2 * pointe_ewh.longueur:g} mm."
+                ),
+            ),
+            _verification(
+                "Deux EWH240/61 opposés sur traverse 120×240",
+                "non-recouvrement des brides supérieures",
+                "constructibilité",
+                2 * ewh.longueur_bride_superieure,
+                plancher.section_largeur,
+                "mm",
+                SOURCE_EWH_DOS_A_DOS,
+                (
+                    f"Bande centrale théorique libre : "
+                    f"{plancher.section_largeur - 2 * ewh.longueur_bride_superieure:g} mm."
+                ),
+            ),
+        )
+    )
     flex_g_i, cis_g_i = _fleches_steico_mm(
         portee_m=portee_solive_m,
         charge_kN_m=g_solive,
@@ -763,9 +802,12 @@ def verifier_plancher_eurocode5(
         (
             "confirmer par DoP les valeurs caractéristiques du bois GT24 120×240",
             "confirmer la capacité SAI avec le plan exact de vis CSA5×40 du projet",
+            "valider les entraxes, distances de rive et le fendage local "
+            "des deux groupes EWH opposés",
             "dimensionner les pieux, platines, ancrages et le sol hors Eurocode 5",
             "vérifier le diaphragme OSB, les vibrations, le feu, le vent et le soulèvement",
             "valider les renforts d'âme, percements et détails d'appui STEICO",
+            "confirmer le rôle structural et le plan de pointage des entretoises STEICOjoist",
         )
     )
 

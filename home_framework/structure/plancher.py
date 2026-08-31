@@ -14,11 +14,18 @@ from home_framework.assemblage import (
 )
 from home_framework.geometrie import GeometriePlancher
 from home_framework.nomenclature import LotBOM, Nomenclaturable
-from home_framework.structure.bois import Madrier, PoutreI, Tasseau
+from home_framework.structure.bois import (
+    EntretoisePoutreI,
+    Madrier,
+    PoutreI,
+    Tasseau,
+)
 from home_framework.structure.connecteurs import (
     PlanFixationEWH,
     PlanFixationSAI,
     PointeAncrageCNA4x35,
+    PointeEntretoise2_5x80,
+    PointeEntretoise3_1x90,
     SabotEWH,
     SabotSAI500_120_2,
     VisBoisOSB4x35,
@@ -59,6 +66,8 @@ class PlancherBois:
     inclure_connecteurs: bool = True
     plan_fixation_sai: PlanFixationSAI = PlanFixationSAI.TOTAL
     inclure_solives_i: bool = False
+    inclure_entretoises_solives_i: bool = False
+    nombre_rangees_entretoises_par_travee: int = 1
     inclure_connecteurs_solives_i: bool = True
     plan_fixation_ewh: PlanFixationEWH = PlanFixationEWH.BRIDES_SUPERIEURES
     hauteur_solives_i: float = 240.0
@@ -123,6 +132,15 @@ class PlancherBois:
             raise ValueError("le jeu entre panneaux OSB doit être compris entre 0 et 3 mm")
         if self.inclure_osb_caissons and not self.inclure_solives_i:
             raise ValueError("les fonds de caisson exigent les solives en I")
+        if self.inclure_entretoises_solives_i and not self.inclure_solives_i:
+            raise ValueError("les entretoises exigent les solives en I")
+        if self.nombre_rangees_entretoises_par_travee < 1:
+            raise ValueError("le nombre de rangées d'entretoises doit être positif")
+        if self.inclure_entretoises_solives_i and (
+            self.longueur_compartiment_isolant <= 0
+            or self.longueur_segment_osb_caisson <= 0
+        ):
+            raise ValueError("les entretoises ne laissent plus de caisson disponible")
         if self.inclure_isolant_caissons and not self.inclure_osb_caissons:
             raise ValueError("l'isolant exige les fonds de caisson OSB")
         if self.inclure_osb_plancher and not self.inclure_solives_i:
@@ -211,6 +229,27 @@ class PlancherBois:
     def nombre_solives_i(self) -> int:
         """Nombre de segments sur toutes les lignes et toutes les travées."""
         return self.nombre_lignes_solives_i * (self.nombre_traverses - 1)
+
+    @property
+    def nombre_entretoises_solives_i(self) -> int:
+        """Nombre de blocs pleine hauteur répartis dans toutes les travées."""
+        if not self.inclure_entretoises_solives_i:
+            return 0
+        return (
+            self.nombre_intervalles_solives_i
+            * (self.nombre_traverses - 1)
+            * self.nombre_rangees_entretoises_par_travee
+        )
+
+    @property
+    def nombre_pointes_entretoises_2_5x80(self) -> int:
+        """Deux pointes par bloc, une de chaque côté de l'âme."""
+        return 2 * self.nombre_entretoises_solives_i
+
+    @property
+    def nombre_pointes_entretoises_3_1x90(self) -> int:
+        """Deux pointes par bloc, une par membrure."""
+        return 2 * self.nombre_entretoises_solives_i
 
     @property
     def entraxe_solives_i(self) -> float:
@@ -366,24 +405,61 @@ class PlancherBois:
         if not self.inclure_osb_caissons:
             return 0
         nombre_interstices = self.nombre_lignes_solives_i - 1
-        return nombre_interstices * (self.nombre_traverses - 1)
+        return (
+            nombre_interstices
+            * (self.nombre_traverses - 1)
+            * self.nombre_segments_osb_par_caisson
+        )
 
     @property
     def nombre_panneaux_osb_rive(self) -> int:
         if not self.inclure_osb_caissons:
             return 0
-        return 2 * (self.nombre_traverses - 1)
+        return (
+            2
+            * (self.nombre_traverses - 1)
+            * self.nombre_segments_osb_par_caisson
+        )
 
     @property
     def nombre_panneaux_osb_caissons(self) -> int:
         return self.nombre_panneaux_osb_interieurs + self.nombre_panneaux_osb_rive
 
+    @property
+    def nombre_segments_osb_par_caisson(self) -> int:
+        if not self.inclure_entretoises_solives_i:
+            return 1
+        return self.nombre_rangees_entretoises_par_travee + 1
+
+    @property
+    def largeur_joint_osb_entretoise(self) -> float:
+        return self.epaisseur_ame_solive_i + self.jeu_joint_osb
+
+    @property
+    def longueur_segment_osb_caisson(self) -> float:
+        largeur_joints = (
+            self.nombre_rangees_entretoises_par_travee
+            * self.largeur_joint_osb_entretoise
+            if self.inclure_entretoises_solives_i
+            else 0
+        )
+        return (
+            self.longueur_solives_i - largeur_joints
+        ) / self.nombre_segments_osb_par_caisson
+
+    def decalages_segments_osb_caisson(self) -> tuple[float, ...]:
+        return tuple(
+            segment
+            * (self.longueur_segment_osb_caisson + self.largeur_joint_osb_entretoise)
+            for segment in range(self.nombre_segments_osb_par_caisson)
+        )
+
     def rendement_dalle_osb_caissons(self, largeur_decoupe: float) -> int:
         """Nombre de fonds rectangulaires débitables dans un panneau brut."""
         rendement = max(
             int(self.largeur_dalle_osb_caissons // largeur_decoupe)
-            * int(self.longueur_dalle_osb_caissons // self.longueur_solives_i),
-            int(self.largeur_dalle_osb_caissons // self.longueur_solives_i)
+            * int(self.longueur_dalle_osb_caissons // self.longueur_segment_osb_caisson),
+            int(self.largeur_dalle_osb_caissons // self.longueur_segment_osb_caisson)
             * int(self.longueur_dalle_osb_caissons // largeur_decoupe),
         )
         if rendement < 1:
@@ -429,7 +505,7 @@ class PlancherBois:
     @property
     def nombre_vis_par_panneau_osb(self) -> int:
         longueur_vissable = (
-            self.longueur_solives_i - 2 * self.retrait_extremite_vis_osb
+            self.longueur_segment_osb_caisson - 2 * self.retrait_extremite_vis_osb
         )
         intervalles = ceil(longueur_vissable / self.entraxe_vis_osb)
         return 2 * (intervalles + 1)
@@ -443,22 +519,63 @@ class PlancherBois:
         if not self.inclure_isolant_caissons:
             return 0
         return (
-            self.nombre_panneaux_osb_caissons
+            self.nombre_intervalles_solives_i
+            * (self.nombre_traverses - 1)
             * self.nombre_segments_isolant_par_caisson
         )
 
     @property
     def nombre_segments_isolant_par_caisson(self) -> int:
+        return (
+            self.nombre_compartiments_isolant_par_caisson
+            * self.nombre_segments_isolant_par_compartiment
+        )
+
+    @property
+    def nombre_compartiments_isolant_par_caisson(self) -> int:
+        if not self.inclure_entretoises_solives_i:
+            return 1
+        return self.nombre_rangees_entretoises_par_travee + 1
+
+    @property
+    def largeur_rangee_entretoises(self) -> float:
+        """Emprise suivant X d'une rangée, égale à la largeur des membrures."""
+        return self.largeur_membrure_solives_i
+
+    @property
+    def longueur_compartiment_isolant(self) -> float:
+        largeur_entretoises = (
+            self.nombre_rangees_entretoises_par_travee
+            * self.largeur_rangee_entretoises
+            if self.inclure_entretoises_solives_i
+            else 0
+        )
+        return (
+            self.longueur_caisson_isolant - largeur_entretoises
+        ) / self.nombre_compartiments_isolant_par_caisson
+
+    @property
+    def nombre_segments_isolant_par_compartiment(self) -> int:
         longueur_panneau = PanneauIsonatFlex55(
             epaisseur=self.epaisseur_isolant_nominale,
         ).longueur
-        return ceil(self.longueur_caisson_isolant / longueur_panneau)
+        return ceil(self.longueur_compartiment_isolant / longueur_panneau)
 
     @property
     def longueur_segment_isolant(self) -> float:
         return (
-            self.longueur_caisson_isolant
-            / self.nombre_segments_isolant_par_caisson
+            self.longueur_compartiment_isolant
+            / self.nombre_segments_isolant_par_compartiment
+        )
+
+    def decalages_segments_isolant(self) -> tuple[float, ...]:
+        """Départs X relatifs des panneaux, en sautant les entretoises."""
+        return tuple(
+            compartiment
+            * (self.longueur_compartiment_isolant + self.largeur_rangee_entretoises)
+            + segment * self.longueur_segment_isolant
+            for compartiment in range(self.nombre_compartiments_isolant_par_caisson)
+            for segment in range(self.nombre_segments_isolant_par_compartiment)
         )
 
     @property
@@ -519,6 +636,29 @@ class PlancherBois:
         return tuple(
             axe_poutre_gauche + index * self.entraxe_solives_i
             for index in range(1, self.nombre_intervalles_solives_i)
+        )
+
+    def intervalles_entretoises_solives_i(
+        self,
+    ) -> tuple[tuple[float, float], ...]:
+        """Faces Y entre lesquelles sont coupées les entretoises."""
+        demi_membrure = self.largeur_membrure_solives_i / 2
+        largeur = self.geometrie.largeur_interieure
+        face_interieure_gauche = -largeur / 2 + self.section_largeur
+        face_interieure_droite = largeur / 2 - self.section_largeur
+        axes = self.axes_solives_i()
+        faces_debut = (face_interieure_gauche, *(axe + demi_membrure for axe in axes))
+        faces_fin = (*(axe - demi_membrure for axe in axes), face_interieure_droite)
+        return tuple(zip(faces_debut, faces_fin))
+
+    def decalages_rangees_entretoises(self) -> tuple[float, ...]:
+        """Axes X relatifs des rangées dans une travée."""
+        if not self.inclure_entretoises_solives_i:
+            return ()
+        return tuple(
+            (rangee + 1) * self.longueur_compartiment_isolant
+            + (rangee + 0.5) * self.largeur_rangee_entretoises
+            for rangee in range(self.nombre_rangees_entretoises_par_travee)
         )
 
     def debuts_travees_solives_i(self) -> tuple[float, ...]:
@@ -952,6 +1092,75 @@ class PlancherBois:
             for ligne in range(1, self.nombre_lignes_solives_i + 1)
             for travee in range(1, self.nombre_traverses)
         )
+        ids_entretoises: list[str] = []
+        if self.inclure_solives_i and self.inclure_entretoises_solives_i:
+            operation_entretoises = InstructionAssemblage(
+                "entretoises_solives_i",
+                "Poser les entretoises pleine hauteur",
+                "Aligner une rangée d'entretoises STEICOjoist au milieu de "
+                "chaque travée, sans entailler les membrures des solives.",
+                (
+                    "Une pointe 2,5×80 de chaque côté de l'âme par entretoise",
+                    "Une pointe 3,1×90 par membrure et par entretoise",
+                    "Confirmer le détail de fixation avec le prescripteur STEICO",
+                ),
+            )
+            intervalles_y = self.intervalles_entretoises_solives_i()
+            for travee, debut_caisson in enumerate(
+                self.debuts_panneaux_isolant(),
+                start=1,
+            ):
+                for rangee, decalage_x in enumerate(
+                    self.decalages_rangees_entretoises(),
+                    start=1,
+                ):
+                    x = debut_caisson + decalage_x
+                    for intervalle, (y_debut, y_fin) in enumerate(
+                        intervalles_y,
+                        start=1,
+                    ):
+                        identifiant = (
+                            f"entretoise_{travee}_{rangee}_{intervalle:02d}"
+                        )
+                        ids_entretoises.append(identifiant)
+                        reference_gauche = (
+                            "rive_gauche"
+                            if intervalle == 1
+                            else identifiant_solive(intervalle - 1, travee)
+                        )
+                        reference_droite = (
+                            "rive_droite"
+                            if intervalle == self.nombre_intervalles_solives_i
+                            else identifiant_solive(intervalle, travee)
+                        )
+                        entretoise = EntretoisePoutreI(
+                            longueur=y_fin - y_debut,
+                            hauteur=self.hauteur_solives_i,
+                            largeur_membrure=self.largeur_membrure_solives_i,
+                        )
+                        declarations.append(
+                            PieceInstance.placer_sur(
+                                identifiant,
+                                (
+                                    f"Entretoise en I travée {travee}, "
+                                    f"rangée {rangee}, intervalle {intervalle:02d}"
+                                ),
+                                entretoise,
+                                reference_gauche,
+                                Location(
+                                    (
+                                        x,
+                                        y_debut,
+                                        self.niveau_haut_traverses
+                                        - self.hauteur_solives_i,
+                                    ),
+                                    (0, 0, 90),
+                                ),
+                                "rosybrown",
+                                prerequis=(reference_droite,),
+                                operation=operation_entretoises,
+                            )
+                        )
         ids_tasseaux: list[str] = []
         ids_fonds_osb: list[str] = []
         if self.inclure_solives_i and self.inclure_osb_caissons:
@@ -1009,17 +1218,6 @@ class PlancherBois:
                         )
                     )
 
-            panneau = PanneauFondCaissonOSB(
-                epaisseur=self.epaisseur_osb_caissons,
-                largeur=self.largeur_panneaux_osb_caissons,
-                longueur=self.longueur_solives_i,
-            )
-            panneau_rive = PanneauFondCaissonOSB(
-                epaisseur=self.epaisseur_osb_caissons,
-                largeur=self.largeur_panneaux_osb_rive,
-                longueur=self.longueur_solives_i,
-                avec_encoches=False,
-            )
             niveau_osb = niveau_bas_solives + solive.hauteur_membrure
             axes_solives = self.axes_solives_i()
             axes_interstices = tuple(
@@ -1027,7 +1225,7 @@ class PlancherBois:
                 for gauche, droite in pairwise(axes_solives)
             )
             retrait_lateral = self.jeu_joint_osb / 2
-            demi_largeur_rive = panneau_rive.largeur / 2
+            demi_largeur_rive = self.largeur_panneaux_osb_rive / 2
             axes_panneaux_rive = (
                 face_interieure_gauche + retrait_lateral + demi_largeur_rive,
                 face_interieure_droite - retrait_lateral - demi_largeur_rive,
@@ -1043,47 +1241,131 @@ class PlancherBois:
                     f"{self.nombre_vis_par_panneau_osb} vis OSB 4×35 par fond",
                 ),
             )
+
+            def identifiant_fond_interieur(
+                interstice: int,
+                travee: int,
+                segment: int,
+            ) -> str:
+                base = f"fond_osb_{interstice:02d}_{travee}"
+                return (
+                    base
+                    if self.nombre_segments_osb_par_caisson == 1
+                    else f"{base}_{segment}"
+                )
+
+            def identifiant_fond_rive(
+                cote: str,
+                travee: int,
+                segment: int,
+            ) -> str:
+                base = f"fond_osb_rive_{cote}_{travee}"
+                return (
+                    base
+                    if self.nombre_segments_osb_par_caisson == 1
+                    else f"{base}_{segment}"
+                )
+
+            def prerequis_entretoises_caisson(
+                travee: int,
+                intervalle: int,
+            ) -> tuple[str, ...]:
+                if not self.inclure_entretoises_solives_i:
+                    return ()
+                return tuple(
+                    f"entretoise_{travee}_{rangee}_{intervalle:02d}"
+                    for rangee in range(
+                        1,
+                        self.nombre_rangees_entretoises_par_travee + 1,
+                    )
+                )
+
             for travee, x in enumerate(
                 self.debuts_travees_solives_i(),
                 start=1,
             ):
-                for interstice, y in enumerate(axes_interstices, start=1):
-                    identifiant = f"fond_osb_{interstice:02d}_{travee}"
-                    ids_fonds_osb.append(identifiant)
-                    declarations.append(
-                        PieceInstance.placer_sur(
-                            identifiant,
-                            f"Fond OSB caisson {interstice:02d}.{travee}",
-                            panneau,
-                            identifiant_solive(interstice, travee),
-                            Location((x, y, niveau_osb)),
-                            "peru",
-                            prerequis=(
-                                identifiant_solive(interstice + 1, travee),
-                                *ids_tasseaux,
-                            ),
-                            operation=operation_osb,
-                        )
-                    )
-                for cote, y, ligne in zip(
-                    ("gauche", "droit"),
-                    axes_panneaux_rive,
-                    (1, self.nombre_lignes_solives_i),
+                for segment, decalage_x in enumerate(
+                    self.decalages_segments_osb_caisson(),
+                    start=1,
                 ):
-                    identifiant = f"fond_osb_rive_{cote}_{travee}"
-                    ids_fonds_osb.append(identifiant)
-                    declarations.append(
-                        PieceInstance.placer_sur(
-                            identifiant,
-                            f"Fond OSB caisson de rive {cote} {travee}",
-                            panneau_rive,
-                            f"tasseau_{cote}_{travee}",
-                            Location((x, y, niveau_osb)),
-                            "chocolate",
-                            prerequis=(identifiant_solive(ligne, travee),),
-                            operation=operation_osb,
-                        )
+                    panneau = PanneauFondCaissonOSB(
+                        epaisseur=self.epaisseur_osb_caissons,
+                        largeur=self.largeur_panneaux_osb_caissons,
+                        longueur=self.longueur_segment_osb_caisson,
+                        encoches_debut=segment == 1,
+                        encoches_fin=(
+                            segment == self.nombre_segments_osb_par_caisson
+                        ),
                     )
+                    panneau_rive = PanneauFondCaissonOSB(
+                        epaisseur=self.epaisseur_osb_caissons,
+                        largeur=self.largeur_panneaux_osb_rive,
+                        longueur=self.longueur_segment_osb_caisson,
+                        avec_encoches=False,
+                    )
+                    x_segment = x + decalage_x
+                    for interstice, y in enumerate(axes_interstices, start=1):
+                        identifiant = identifiant_fond_interieur(
+                            interstice,
+                            travee,
+                            segment,
+                        )
+                        ids_fonds_osb.append(identifiant)
+                        declarations.append(
+                            PieceInstance.placer_sur(
+                                identifiant,
+                                (
+                                    f"Fond OSB caisson {interstice:02d}."
+                                    f"{travee}.{segment}"
+                                ),
+                                panneau,
+                                identifiant_solive(interstice, travee),
+                                Location((x_segment, y, niveau_osb)),
+                                "peru",
+                                prerequis=(
+                                    identifiant_solive(interstice + 1, travee),
+                                    *prerequis_entretoises_caisson(
+                                        travee,
+                                        interstice + 1,
+                                    ),
+                                    *ids_tasseaux,
+                                ),
+                                operation=operation_osb,
+                            )
+                        )
+                    for cote, y, ligne, intervalle in zip(
+                        ("gauche", "droit"),
+                        axes_panneaux_rive,
+                        (1, self.nombre_lignes_solives_i),
+                        (1, self.nombre_intervalles_solives_i),
+                    ):
+                        identifiant = identifiant_fond_rive(
+                            cote,
+                            travee,
+                            segment,
+                        )
+                        ids_fonds_osb.append(identifiant)
+                        declarations.append(
+                            PieceInstance.placer_sur(
+                                identifiant,
+                                (
+                                    f"Fond OSB caisson de rive {cote} "
+                                    f"{travee}.{segment}"
+                                ),
+                                panneau_rive,
+                                f"tasseau_{cote}_{travee}",
+                                Location((x_segment, y, niveau_osb)),
+                                "chocolate",
+                                prerequis=(
+                                    identifiant_solive(ligne, travee),
+                                    *prerequis_entretoises_caisson(
+                                        travee,
+                                        intervalle,
+                                    ),
+                                ),
+                                operation=operation_osb,
+                            )
+                        )
 
             if self.inclure_isolant_caissons:
                 niveau_isolant = niveau_osb + self.epaisseur_osb_caissons
@@ -1101,31 +1383,51 @@ class PlancherBois:
                     self.debuts_panneaux_isolant(),
                     start=1,
                 ):
-                    for segment in range(self.nombre_segments_isolant_par_caisson):
+                    for segment, decalage_x in enumerate(
+                        self.decalages_segments_isolant(),
+                        start=1,
+                    ):
                         isolant = PanneauIsonatFlex55(
                             epaisseur=self.epaisseur_isolant_nominale,
                             epaisseur_pose=self.epaisseur_isolant_nominale,
                             largeur_pose=self.largeur_caisson_isolant,
                             longueur_pose=self.longueur_segment_isolant,
                         )
-                        x = debut_caisson + segment * self.longueur_segment_isolant
+                        x = debut_caisson + decalage_x
+                        compartiment = (
+                            (segment - 1)
+                            // self.nombre_segments_isolant_par_compartiment
+                            + 1
+                        )
                         for caisson, y in enumerate(
                             self.axes_panneaux_isolant(),
                             start=1,
                         ):
                             reference = (
-                                f"fond_osb_rive_gauche_{travee}"
+                                identifiant_fond_rive(
+                                    "gauche",
+                                    travee,
+                                    compartiment,
+                                )
                                 if caisson == 1
                                 else (
-                                    f"fond_osb_rive_droit_{travee}"
+                                    identifiant_fond_rive(
+                                        "droit",
+                                        travee,
+                                        compartiment,
+                                    )
                                     if caisson == self.nombre_intervalles_solives_i
-                                    else f"fond_osb_{caisson - 1:02d}_{travee}"
+                                    else identifiant_fond_interieur(
+                                        caisson - 1,
+                                        travee,
+                                        compartiment,
+                                    )
                                 )
                             )
                             declarations.append(
                                 PieceInstance.placer_sur(
-                                    f"isolant_{caisson:02d}_{travee}_{segment + 1}",
-                                    f"Isolant Isonat {caisson:02d}.{travee}.{segment + 1}",
+                                    f"isolant_{caisson:02d}_{travee}_{segment}",
+                                    f"Isolant Isonat {caisson:02d}.{travee}.{segment}",
                                     isolant,
                                     reference,
                                     Location((x, y, niveau_isolant)),
@@ -1147,10 +1449,11 @@ class PlancherBois:
             Madrier: 0,
             SabotSAI500_120_2: 1,
             PoutreI: 2,
-            SabotEWH: 3,
-            Tasseau: 4,
-            PanneauFondCaissonOSB: 5,
-            PanneauIsonatFlex55: 6,
+            EntretoisePoutreI: 3,
+            SabotEWH: 4,
+            Tasseau: 5,
+            PanneauFondCaissonOSB: 6,
+            PanneauIsonatFlex55: 7,
         }
         elements: list[ElementPlancher] = sorted(
             resolus,
@@ -1200,6 +1503,22 @@ class PlancherBois:
         if self.nombre_pointes_ewh:
             pointes = PointeAncrageCNA4x35()
             pieces.append(LotBOM(pointes.article_bom(), self.nombre_pointes_ewh))
+        if self.nombre_pointes_entretoises_2_5x80:
+            pointes_ame = PointeEntretoise2_5x80()
+            pieces.append(
+                LotBOM(
+                    pointes_ame.article_bom(),
+                    self.nombre_pointes_entretoises_2_5x80,
+                )
+            )
+        if self.nombre_pointes_entretoises_3_1x90:
+            pointes_membrures = PointeEntretoise3_1x90()
+            pieces.append(
+                LotBOM(
+                    pointes_membrures.article_bom(),
+                    self.nombre_pointes_entretoises_3_1x90,
+                )
+            )
         if self.nombre_vis_osb:
             vis_osb = VisBoisOSB4x35()
             pieces.append(LotBOM(vis_osb.article_bom(), self.nombre_vis_osb))
