@@ -9,6 +9,8 @@ const statusText = document.querySelector("#status-text");
 const layerList = document.querySelector("#layer-list");
 const visibleMass = document.querySelector("#visible-mass");
 const massNote = document.querySelector("#mass-note");
+const voidVolume = document.querySelector("#void-volume");
+const voidRate = document.querySelector("#void-rate");
 const modelRoot = new THREE.Group();
 const layerObjects = new Map();
 let manifest;
@@ -99,12 +101,15 @@ function createLayerRow(layer) {
   row.className = "layer-row";
   row.style.setProperty("--layer-color", layer.color);
   row.title = layer.description;
+  const layerDetail = layer.diagnostic
+    ? `${layer.volumeM3.toLocaleString("fr-FR", { minimumFractionDigits: 3 })} m³ · ${layer.count} volume${layer.count > 1 ? "s" : ""}`
+    : `${formatMass(layer.massKg)}${unitDetail ? ` · ${unitDetail}` : ""}`;
   row.innerHTML = `
     <input type="checkbox" ${layer.visible ? "checked" : ""} />
     <span class="layer-switch" aria-hidden="true"></span>
     <span class="layer-copy">
       <strong>${layer.label}</strong>
-      <small>${formatMass(layer.massKg)}${unitDetail ? ` · ${unitDetail}` : ""}</small>
+      <small>${layerDetail}</small>
     </span>
     <span class="layer-count">${layer.count}</span>
   `;
@@ -138,7 +143,7 @@ function updateVisibleMass() {
   if (!manifest) return;
   const mass = manifest.layers.reduce((total, layer) => {
     const object = layerObjects.get(layer.id);
-    return total + (object?.visible ? layer.massKg : 0);
+    return total + (object?.visible ? (layer.massKg ?? 0) : 0);
   }, 0);
   visibleMass.textContent = formatMass(mass);
 
@@ -201,6 +206,11 @@ async function loadModel() {
       `${manifest.project.objectCount.toLocaleString("fr-FR")} pièces`;
     massNote.textContent =
       `Ensemble complet avec fixations : ${formatMass(manifest.summary.totalMassIncludingFastenersKg)}.`;
+    const voidAnalysis = manifest.summary.voidAnalysis;
+    voidVolume.textContent =
+      `${voidAnalysis.uninsulatedVoidVolumeM3.toLocaleString("fr-FR", { minimumFractionDigits: 3 })} m³`;
+    voidRate.textContent =
+      `${voidAnalysis.voidRatePercent.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} %`;
     manifest.layers.forEach(createLayerRow);
 
     const loader = new GLTFLoader();
@@ -214,13 +224,17 @@ async function loadModel() {
 
       layerGroup.traverse((object) => {
         if (!object.isMesh) return;
+        const opacity = layer.opacity ?? 1;
         object.material = new THREE.MeshStandardMaterial({
           color: layer.color,
           roughness: layer.id.includes("connecteurs") || layer.id === "fondations" ? 0.48 : 0.78,
           metalness: layer.id.includes("connecteurs") || layer.id === "fondations" ? 0.55 : 0.04,
           side: THREE.DoubleSide,
+          transparent: opacity < 1,
+          opacity,
+          depthWrite: opacity >= 1,
         });
-        object.castShadow = true;
+        object.castShadow = !layer.diagnostic;
         object.receiveShadow = true;
         object.userData.layerId = layer.id;
       });
@@ -280,6 +294,11 @@ document.querySelector("#show-caissons").addEventListener("click", () => {
     "tasseaux",
     "fonds_osb",
   ]);
+});
+
+document.querySelector("#show-voids").addEventListener("click", () => {
+  if (!manifest) return;
+  applyPreset(["vides_structure"]);
 });
 
 document.querySelectorAll("[data-view]").forEach((button) => {

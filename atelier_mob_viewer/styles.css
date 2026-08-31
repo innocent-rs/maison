@@ -233,7 +233,7 @@ h2 {
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
 }
 
@@ -258,6 +258,46 @@ h2 {
 .view-toolbar button.active {
   border-color: #8ba095;
   background: #edf3ef;
+}
+
+.void-card {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  background: #fff5f6;
+}
+
+.void-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.void-metrics div {
+  padding: 9px 10px;
+  border: 1px solid #f0d6db;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.void-metrics strong,
+.void-metrics span {
+  display: block;
+}
+
+.void-metrics strong {
+  color: #a4354b;
+  font-size: 0.9rem;
+}
+
+.void-metrics span,
+.void-note {
+  color: #7c6267;
+  font-size: 0.61rem;
+  line-height: 1.35;
+}
+
+.void-note {
+  margin: 8px 0 0;
 }
 
 .mass-card {

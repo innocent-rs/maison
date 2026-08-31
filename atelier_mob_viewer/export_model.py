@@ -186,6 +186,7 @@ def export_viewer_model(output_dir: Path = OUTPUT_DIR) -> Path:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     mass_metadata, mass_report = _mass_metadata(atelier, elements_by_layer)
+    rapport_vides = atelier.analyser_vides()
 
     manifest_layers = []
     for layer in LAYERS:
@@ -217,6 +218,42 @@ def export_viewer_model(output_dir: Path = OUTPUT_DIR) -> Path:
         )
 
     modeled_mass = sum(layer["massKg"] for layer in manifest_layers)
+    void_file_name = "vides_structure.glb"
+    export_gltf(
+        Compound(
+            children=[
+                composante.forme
+                for composante in rapport_vides.composantes
+            ],
+            label="Vides détectés dans l’enveloppe du plancher",
+        ),
+        output_dir / void_file_name,
+        binary=True,
+        linear_deflection=0.1,
+        angular_deflection=0.15,
+    )
+    manifest_layers.append(
+        {
+            "id": "vides_structure",
+            "label": "Vides détectés",
+            "description": (
+                "Résultat automatique : enveloppe intérieure moins toutes "
+                "les pièces volumiques du plancher"
+            ),
+            "color": "#d94b64",
+            "file": void_file_name,
+            "count": rapport_vides.nombre_composantes,
+            "visible": False,
+            "explodeOffsetM": 0.8,
+            "massKg": None,
+            "linearMassKgM": None,
+            "unitMassKg": None,
+            "opacity": 0.38,
+            "diagnostic": True,
+            "volumeM3": round(rapport_vides.volume_vide_m3, 3),
+            "voidRatePercent": round(rapport_vides.taux_vide_pct, 2),
+        }
+    )
     foundation_mass = mass_metadata["fondations"]["massKg"]
     manifest = {
         "project": {
@@ -238,6 +275,23 @@ def export_viewer_model(output_dir: Path = OUTPUT_DIR) -> Path:
                 3,
             ),
             "floorAreaM2": round(mass_report.surface_plancher_m2, 3),
+            "voidAnalysis": {
+                "method": "Pré-diagnostic géométrique — pas un calcul psi ISO 10211",
+                "componentCount": rapport_vides.nombre_composantes,
+                "occupantCount": rapport_vides.nombre_occupants,
+                "analysisEnvelopeVolumeM3": round(
+                    rapport_vides.volume_enveloppe_m3,
+                    3,
+                ),
+                "uninsulatedVoidVolumeM3": round(
+                    rapport_vides.volume_vide_m3,
+                    3,
+                ),
+                "voidRatePercent": round(
+                    rapport_vides.taux_vide_pct,
+                    2,
+                ),
+            },
         },
         "layers": manifest_layers,
     }

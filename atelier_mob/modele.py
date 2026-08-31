@@ -66,6 +66,16 @@ class AtelierMob:
 
         return inventorier_masses_plancher(self.plancher, hypotheses)
 
+    def analyser_vides(self):
+        """Détecte les volumes inoccupés dans l'enveloppe du plancher."""
+        from .thermique import analyser_vides_structure
+
+        return analyser_vides_structure(self.plancher)
+
+    def analyser_ponts_thermiques(self):
+        """Alias historique du pré-diagnostic géométrique des vides."""
+        return self.analyser_vides()
+
 
 def creer_atelier_mob(
     positions_platines: tuple[tuple[float, float], ...] | None = None,

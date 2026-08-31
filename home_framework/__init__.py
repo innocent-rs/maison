@@ -18,6 +18,7 @@ from .chiffrage import CatalogueTarifs, Chiffrage, ModeTarification, Tarif
 from .manuel import exporter_manuel
 from .nomenclature import ArticleBOM, LotBOM, Nomenclature, Nomenclaturable
 from .optimisation import PieceDebit, PlanDebit, optimiser_debit
+from .vides import ComposanteVide, RapportVides, detecter_vides
 
 __all__ = [
     "Ancrage",
@@ -27,6 +28,7 @@ __all__ = [
     "ComposantRigide",
     "CatalogueTarifs",
     "Chiffrage",
+    "ComposanteVide",
     "DecalageParallele",
     "EntreFaces",
     "InstructionAssemblage",
@@ -40,8 +42,10 @@ __all__ = [
     "PiecePlacee",
     "PositionSurReference",
     "PlanDebit",
+    "RapportVides",
     "Tarif",
     "TrameEntreFaces",
     "exporter_manuel",
+    "detecter_vides",
     "optimiser_debit",
 ]

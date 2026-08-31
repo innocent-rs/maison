@@ -1,5 +1,9 @@
 # Atelier MOB
 
+La note [REPRISE_THERMIQUE.md](REPRISE_THERMIQUE.md) conserve l'état du
+détecteur de vides et la feuille de route pour les futurs calculs `R`, `U` et
+`ψ`.
+
 Modèle paramétrique d'un atelier rectangulaire en ossature bois. Le projet
 n'est plus une maison en A : sa géométrie de plancher est désormais
 indépendante de la forme future des murs et de la toiture.
@@ -52,6 +56,36 @@ l'objet d'une vérification hygrothermique : un atelier chauffé demande une
 bonne continuité d'étanchéité à l'air côté chaud et une sous-face suffisamment
 ouverte à la diffusion et protégée du vent, de l'eau et des rongeurs.
 
+## Pré-diagnostic des vides thermiques
+
+Le moteur commun `home_framework.vides` ne contient aucune règle propre aux
+poutres en I. Il reçoit une enveloppe CAO quelconque et en soustrait tous les
+solides qui la chevauchent. Il retourne ensuite chaque volume vide connexe.
+Cette mécanique pourra donc être réutilisée pour un mur, une toiture ou une
+autre composition de plancher.
+
+Pour l'atelier, l'enveloppe analysée est automatiquement délimitée entre la
+face intérieure du fond OSB et la sous-face de l'OSB supérieur. Les `339`
+pièces volumiques présentes dans cette zone sont soustraites, sans sélection
+par type. Le résultat courant est :
+
+- une enveloppe d'analyse de `19,845 m³` ;
+- un volume vide connexe de `4,070 m³` ;
+- un taux de vide géométrique de `20,51 %`.
+
+Le résultat inclut donc les cavités des profilés, les jeux réels et le plénum
+laissé par les `145 mm` d'isolant ; il évolue automatiquement avec la CAO. Le
+taux volumique n'est ni un pourcentage de déperdition ni un coefficient de
+pont thermique. Une valeur `ψ` demande un modèle de flux avec conductivités,
+conditions aux limites, continuités d'étanchéité à l'air et statut réel des
+cavités, selon l'ISO 10211. Le rapport géométrique est accessible avec :
+
+```python
+rapport = creer_atelier_mob().analyser_vides()
+print(rapport.volume_vide_m3)
+print(rapport.taux_vide_pct)
+```
+
 ## Fondations et chemin des charges
 
 Par défaut, trois platines de pieux sont placées sous chacune des huit
@@ -90,6 +124,7 @@ Documents produit de référence :
 - [guide technique STEICOconstruction](https://www.steico.com/fileadmin/user_upload/importer/downloads/4028b6097384810e01749ff1e1ce608c/Guide_technique_STEICOconstruction_FR_i.pdf) ;
 - [certificat ACERMI Isonat Flex 55](https://www.isonat.com/documents/certification-acermi/15-217-984-6-flex-55-0.pdf) ;
 - [fiche Simpson Strong-Tie SAI-SAIL](https://pim.strongtie.eu/api/v1/public/download/fr/fr/product/40/SAI-SAIL.pdf).
+- [ISO 10211 — ponts thermiques dans les bâtiments](https://www.iso.org/standard/65710.html).
 
 ## Pré-vérification automatique Eurocode 5
 

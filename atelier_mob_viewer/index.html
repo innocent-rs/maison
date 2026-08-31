@@ -50,7 +50,25 @@
             <button id="show-all" type="button">Tout afficher</button>
             <button id="show-structure" type="button">Structure seule</button>
             <button id="show-caissons" type="button">Caissons ouverts</button>
+            <button id="show-voids" type="button">Vides structure</button>
           </div>
+        </section>
+
+        <section class="sidebar-section void-card" aria-label="Analyse des vides">
+          <p class="eyebrow">Détection volumique</p>
+          <div class="void-metrics">
+            <div>
+              <strong id="void-volume">—</strong>
+              <span>de vide non isolé</span>
+            </div>
+            <div>
+              <strong id="void-rate">—</strong>
+              <span>du volume analysé</span>
+            </div>
+          </div>
+          <p class="void-note">
+            Soustraction CAO automatique ; ce n’est pas un calcul ψ ISO 10211.
+          </p>
         </section>
 
         <footer class="mass-card">

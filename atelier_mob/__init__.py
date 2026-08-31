@@ -22,6 +22,10 @@ from .plancher import (
     creer_plancher_atelier,
     positions_pieux_pour_plancher,
 )
+from .thermique import (
+    analyser_vides_structure,
+    enveloppe_analyse_plancher,
+)
 from home_framework.structure.bois import EntretoisePoutreI, Madrier, PoutreI
 
 __all__ = [
@@ -42,8 +46,10 @@ __all__ = [
     "RapportMasses",
     "StatutVerification",
     "Verification",
+    "analyser_vides_structure",
     "creer_atelier_mob",
     "creer_plancher_atelier",
+    "enveloppe_analyse_plancher",
     "positions_pieux_pour_plancher",
     "inventorier_masses_plancher",
     "verifier_plancher_eurocode5",

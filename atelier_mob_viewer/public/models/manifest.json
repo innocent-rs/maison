@@ -11,7 +11,15 @@
     "floorMassIncludingFastenersKg": 4940.337,
     "foundationPlatesMassKg": 37.68,
     "totalMassIncludingFastenersKg": 4978.017,
-    "floorAreaM2": 105.0
+    "floorAreaM2": 105.0,
+    "voidAnalysis": {
+      "method": "Pré-diagnostic géométrique — pas un calcul psi ISO 10211",
+      "componentCount": 1,
+      "occupantCount": 339,
+      "analysisEnvelopeVolumeM3": 19.845,
+      "uninsulatedVoidVolumeM3": 4.07,
+      "voidRatePercent": 20.51
+    }
   },
   "layers": [
     {
@@ -143,6 +151,23 @@
       "massKg": 1386.0,
       "linearMassKgM": null,
       "unitMassKg": null
+    },
+    {
+      "id": "vides_structure",
+      "label": "Vides détectés",
+      "description": "Résultat automatique : enveloppe intérieure moins toutes les pièces volumiques du plancher",
+      "color": "#d94b64",
+      "file": "vides_structure.glb",
+      "count": 1,
+      "visible": false,
+      "explodeOffsetM": 0.8,
+      "massKg": null,
+      "linearMassKgM": null,
+      "unitMassKg": null,
+      "opacity": 0.38,
+      "diagnostic": true,
+      "volumeM3": 4.07,
+      "voidRatePercent": 20.51
     }
   ]
 }
