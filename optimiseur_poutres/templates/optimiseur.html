@@ -43,7 +43,16 @@
             <label>Permanente G <small>kg/m²</small><input name="masse_permanente_kg_m2" type="number" min="0" step="any" required value="{{ valeurs.get('masse_permanente_kg_m2', '') }}"></label>
             <label>Exploitation Q <small>kg/m²</small><input name="masse_exploitation_kg_m2" type="number" min="0" step="any" required value="{{ valeurs.get('masse_exploitation_kg_m2', '') }}"></label>
             <label>Masse ajoutée totale <small>kg · répartie en Q</small><input name="masse_ajoutee_totale_kg" type="number" min="0" step="any" required value="{{ valeurs.get('masse_ajoutee_totale_kg', '') }}"></label>
-            <label>Limite de flèche <small>L / diviseur</small><input name="limite_fleche_diviseur" type="number" min="1" step="any" required value="{{ valeurs.get('limite_fleche_diviseur', '') }}"></label>
+            <label>Profil de flèche <small>hypothèse de projet</small>
+              <select name="profil_fleche" id="profil-fleche">
+                <option value="atelier" {% if valeurs.get('profil_fleche') == 'atelier' %}selected{% endif %}>Atelier / stockage léger — L/250</option>
+                <option value="maison" {% if valeurs.get('profil_fleche') == 'maison' %}selected{% endif %}>Maison / plancher habitable — L/300</option>
+                <option value="maison_fragile" {% if valeurs.get('profil_fleche') == 'maison_fragile' %}selected{% endif %}>Maison, finitions fragiles — L/400</option>
+                <option value="toiture" {% if valeurs.get('profil_fleche') == 'toiture' %}selected{% endif %}>Toiture non accessible — L/200</option>
+                <option value="personnalise" {% if valeurs.get('profil_fleche') == 'personnalise' %}selected{% endif %}>Personnalisé</option>
+              </select>
+            </label>
+            <label id="limite-personnalisee">Limite personnalisée <small>L / diviseur</small><input name="limite_fleche_diviseur" type="number" min="1" step="any" required value="{{ valeurs.get('limite_fleche_diviseur', '') }}"></label>
           </div>
           <details>
             <summary>Paramètres Eurocode 5 et matériau C24</summary>
@@ -97,14 +106,14 @@
             <h2>{{ m.nombre_poutres }} <span>lignes de poutres principales sur {{ '%.2f'|format(m.portee_totale_m) }} m</span></h2>
             <p>{{ m.nombre_travees }} travée{% if m.nombre_travees > 1 %}s{% endif %} de {{ '%.2f'|format(m.portee_m) }} m · {{ m.nombre_lignes_appui_intermediaires }} ligne{% if m.nombre_lignes_appui_intermediaires != 1 %}s{% endif %} d’appui intermédiaire · espacement des poutres {{ '%.0f'|format(m.entraxe_m * 1000) }} mm</p>
           </div>
-          <div class="prix"><strong>{{ '%.0f'|format(m.cout_eur) }} €</strong><span>{{ '%.0f'|format(m.cout_bois_eur) }} € de bois + {{ '%.0f'|format(m.cout_appuis_eur) }} € d’appuis · hors rives, coupes et livraison</span></div>
+          <div class="prix"><strong>{{ '%.0f'|format(m.cout_eur) }} €</strong><span>{{ '%.0f'|format(m.cout_bois_eur) }} € de bois + {{ '%.0f'|format(m.cout_appuis_eur) }} € de pieux · hors coupes et livraison</span></div>
         </div>
         <div class="jauges">
           {% for nom, taux, valeur, limite, unite in (
             ('Flèche finale', m.taux_fleche, m.fleche_finale_mm, m.limite_fleche_mm, 'mm'),
             ('Flexion ELU', m.taux_flexion, m.contrainte_flexion_mpa, m.resistance_flexion_mpa, 'MPa'),
             ('Cisaillement ELU', m.taux_cisaillement, m.contrainte_cisaillement_mpa, m.resistance_cisaillement_mpa, 'MPa'),
-            ('Pieu vissé ELU', m.taux_appui, m.reaction_appui_intermediaire_elu_kN, m.capacite_appui_kN, 'kN')
+            ('Pieu vissé ELU', m.taux_appui, m.reaction_pieu_max_elu_kN, m.capacite_appui_kN, 'kN')
           ) %}
           <div class="jauge-bloc">
             <div class="jauge-titre"><span>{{ nom }}</span><strong>{{ '%.0f'|format(taux * 100) }} %</strong></div>
@@ -129,9 +138,9 @@
                 <title>Poutre principale {{ loop.index }} · largeur {{ '%.0f'|format(m.section.largeur_mm) }} mm</title>
               </rect>
             {% endfor %}
-            {% for ligne in range(1, m.nombre_travees) %}
+            {% for ligne in range(0, m.nombre_travees + 1) %}
               {% set y_pieu = ligne / m.nombre_travees * plan_h %}
-              <line class="rang-pieux" x1="0" y1="{{ y_pieu }}" x2="{{ plan_l }}" y2="{{ y_pieu }}" />
+              <line class="rang-pieux {% if ligne == 0 or ligne == m.nombre_travees %}rang-rive{% endif %}" x1="0" y1="{{ y_pieu }}" x2="{{ plan_l }}" y2="{{ y_pieu }}" />
               {% for i in range(m.nombre_poutres) %}
                 {% set x_pieu = i / (m.nombre_poutres - 1) * plan_l %}
                 <g class="pieu-plan">
@@ -143,11 +152,11 @@
               {% endfor %}
             {% endfor %}
           </svg>
-          <div class="schema-cotes"><span>↔ {{ '%.2f'|format(m.largeur_repartie_m) }} m entre les rives</span><span>{{ m.nombre_appuis_ponctuels }} platines représentées à leur taille réelle relative</span><span>↕ {{ m.nombre_travees }} × {{ '%.2f'|format(m.portee_m) }} m</span></div>
+          <div class="schema-cotes"><span>↔ {{ '%.2f'|format(m.largeur_repartie_m) }} m entre les rives</span><span>{{ m.nombre_pieux_total }} platines, dont les 4 coins, représentées à leur taille réelle relative</span><span>↕ {{ m.nombre_travees }} × {{ '%.2f'|format(m.portee_m) }} m</span></div>
         </div>
         <dl class="metriques">
           <div><dt>Critère dimensionnant</dt><dd>{{ m.critere_dimensionnant }}</dd></div>
-          <div><dt>Pieux intermédiaires</dt><dd>{{ m.nombre_appuis_ponctuels }} pieux / {{ m.nombre_lignes_appui_intermediaires }} rangées</dd></div>
+          <div><dt>Pieux vissés</dt><dd>{{ m.nombre_pieux_total }} au total · {{ m.nombre_pieux_rive }} aux rives</dd></div>
           <div><dt>Masse des principales</dt><dd>{{ '%.0f'|format(m.masse_poutres_kg) }} kg</dd></div>
           <div><dt>Charge G / poutre</dt><dd>{{ '%.2f'|format(m.charge_g_kN_m) }} kN/m</dd></div>
           <div><dt>Charge Q / poutre</dt><dd>{{ '%.2f'|format(m.charge_q_kN_m) }} kN/m</dd></div>
@@ -156,7 +165,7 @@
         </dl>
       </section>
       {% elif resultat %}
-      <section class="aucune"><h2>Aucune configuration conforme</h2><p>Augmentez le nombre maximal d’appuis, ajoutez une section plus rigide ou vérifiez les hypothèses. Les poutres ne sont jamais rapprochées au-delà de leur largeur physique.</p></section>
+      <section class="aucune"><h2>Aucune configuration conforme</h2><p>Ajoutez une section plus rigide ou vérifiez les hypothèses. Les rangées de pieux sont déjà recherchées automatiquement et les poutres ne sont jamais rapprochées au-delà de leur largeur physique.</p></section>
       {% endif %}
 
       {% if resultat %}
@@ -171,7 +180,7 @@
                 <td>{% if c.conforme %}{{ loop.index }}{% else %}—{% endif %}</td>
                 <th>{{ c.section.nom }}<small>{{ c.orientation }}</small></th>
                 <td>{{ c.nombre_travees }} × {{ '%.2f'|format(c.portee_m) }} m</td>
-                <td>{{ c.nombre_lignes_appui_intermediaires }} rangées<small>{{ c.nombre_appuis_ponctuels }} pieux · R={{ '%.1f'|format(c.reaction_appui_intermediaire_elu_kN) }} kN</small></td>
+                <td>{{ c.nombre_lignes_appui_intermediaires }} int. + 2 rives<small>{{ c.nombre_pieux_total }} pieux · R max={{ '%.1f'|format(c.reaction_pieu_max_elu_kN) }} kN</small></td>
                 <td>{{ c.nombre_poutres }}</td>
                 <td>{{ '%.0f'|format(c.entraxe_m * 1000) }} mm</td>
                 <td><span class="pastille {% if c.taux_fleche > 1 %}ko{% endif %}">{{ '%.0f'|format(c.taux_fleche * 100) }} %</span></td>
@@ -189,9 +198,9 @@
 
       <section class="notes">
         <article><span>HYPOTHÈSE</span><h3>Travées égales</h3><p>Chaque travée est calculée comme simplement appuyée. Sous charge uniforme, leur répartition égale minimise la portée dimensionnante. La continuité éventuelle de la poutre n’est pas créditée.</p></article>
-        <article><span>ELS</span><h3>Flèche avec fluage</h3><p>w<sub>fin</sub> = w<sub>G</sub>(1+k<sub>def</sub>) + w<sub>Q</sub>(1+ψ₂k<sub>def</sub>). La limite L/300 reste une hypothèse de projet modifiable.</p></article>
+        <article><span>ELS</span><h3>Profils de flèche</h3><p>w<sub>fin</sub> = w<sub>G</sub>(1+k<sub>def</sub>) + w<sub>Q</sub>(1+ψ₂k<sub>def</sub>). Atelier L/250, maison L/300, finitions fragiles L/400 et toiture L/200 sont des hypothèses de projet modifiables.</p></article>
         <article><span>V2</span><h3>Solives en I hors calcul</h3><p>Leur section, leur entraxe, leur flèche et les sabots ne sont pas optimisés ici. Le champ « portée secondaire maximale » n’est qu’une contrainte géométrique provisoire ; laissez 0 pour ne pas l’utiliser.</p></article>
-        <article><span>PIEUX VISSÉS</span><h3>5 tonnes en statique</h3><p>Chaque pieu intérieur reçoit les demi-réactions des deux travées adjacentes. Les 5 t sont provisoirement assimilées à une résistance de calcul et comparées à la réaction ELU. Cette interprétation devra être confirmée avec le fournisseur.</p></article>
+        <article><span>PIEUX VISSÉS</span><h3>Rives et quatre coins</h3><p>Chaque poutre repose sur un pieu à ses deux extrémités : les quatre coins sont donc toujours présents. Un pieu intérieur reçoit les demi-réactions des deux travées adjacentes. Les 5 t sont provisoirement comparées à la réaction ELU.</p></article>
         <article><span>À FAIRE VALIDER</span><h3>Pré-dimensionnement</h3><p>Sol, flambement et corrosion des pieux, platine de 200 mm, compression locale du bois, liaisons, effets horizontaux, rives et stabilité globale restent hors calcul.</p></article>
       </section>
       <p class="references">Références de méthode : NF EN 1990 / 1991 / 1995-1-1 et Annexe nationale française. Ressources : <a href="https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-5-design-timber-structures" target="_blank" rel="noreferrer">Commission européenne · Eurocode 5</a> et <a href="https://www.fcba.fr/wp-content/uploads/2025/10/guide-panneau-septembre-2025.pdf" target="_blank" rel="noreferrer">guide technique FCBA</a>.</p>

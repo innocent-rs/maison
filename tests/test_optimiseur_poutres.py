@@ -22,7 +22,10 @@ class TestCalculOptimiseurPoutres(unittest.TestCase):
         )
         self.assertAlmostEqual(resultat.entraxe_m, 0.5)
         self.assertAlmostEqual(resultat.longueur_totale_m, 54)
-        self.assertAlmostEqual(resultat.cout_eur, 1620)
+        self.assertAlmostEqual(resultat.cout_bois_eur, 1620)
+        self.assertEqual(resultat.nombre_pieux_total, 18)
+        self.assertAlmostEqual(resultat.cout_appuis_eur, 9_000)
+        self.assertAlmostEqual(resultat.cout_eur, 10_620)
 
     def test_fleche_finale_applique_le_fluage(self) -> None:
         hypotheses = HypothesesProjet(
@@ -98,8 +101,10 @@ class TestCalculOptimiseurPoutres(unittest.TestCase):
         )
 
         self.assertEqual(resultat.nombre_lignes_appui_intermediaires, 2)
-        self.assertEqual(resultat.nombre_appuis_ponctuels, 8)
-        self.assertAlmostEqual(resultat.cout_appuis_eur, 4_000)
+        self.assertEqual(resultat.nombre_pieux_intermediaires, 8)
+        self.assertEqual(resultat.nombre_pieux_rive, 8)
+        self.assertEqual(resultat.nombre_pieux_total, 16)
+        self.assertAlmostEqual(resultat.cout_appuis_eur, 8_000)
 
     def test_pieu_interieur_reprend_les_deux_demi_reactions(self) -> None:
         resultat = evaluer_configuration(
@@ -112,7 +117,7 @@ class TestCalculOptimiseurPoutres(unittest.TestCase):
         charge_elu = 1.35 * resultat.charge_g_kN_m + 1.5 * resultat.charge_q_kN_m
 
         self.assertAlmostEqual(
-            resultat.reaction_appui_intermediaire_elu_kN,
+            resultat.reaction_pieu_max_elu_kN,
             charge_elu * resultat.portee_m,
         )
         self.assertAlmostEqual(resultat.capacite_appui_kN, 49.05)
@@ -128,6 +133,22 @@ class TestCalculOptimiseurPoutres(unittest.TestCase):
 
         self.assertFalse(resultat.conforme)
         self.assertIn("capacité statique du pieu vissé", resultat.contraintes)
+
+    def test_profils_de_fleche_appliquent_leur_diviseur(self) -> None:
+        self.assertEqual(HypothesesProjet(profil_fleche="atelier").limite_fleche_diviseur, 250)
+        self.assertEqual(HypothesesProjet(profil_fleche="maison").limite_fleche_diviseur, 300)
+        self.assertEqual(
+            HypothesesProjet(profil_fleche="maison_fragile").limite_fleche_diviseur,
+            400,
+        )
+        self.assertEqual(HypothesesProjet(profil_fleche="toiture").limite_fleche_diviseur, 200)
+        self.assertEqual(
+            HypothesesProjet(
+                profil_fleche="personnalise",
+                limite_fleche_diviseur=350,
+            ).limite_fleche_diviseur,
+            350,
+        )
 
     def test_refuse_une_section_vide(self) -> None:
         with self.assertRaises(ValueError):
@@ -145,7 +166,14 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
         self.assertIn("Flèche finale", reponse.text)
         self.assertIn("Solives en I hors calcul", reponse.text)
         self.assertIn("Plan à l’échelle", reponse.text)
-        self.assertEqual(reponse.text.count('class="platine-pieu"'), 10)
+        meilleure = optimiser(HypothesesProjet()).meilleure
+        self.assertIsNotNone(meilleure)
+        self.assertEqual(meilleure.nombre_pieux_rive, 2 * meilleure.nombre_poutres)
+        self.assertEqual(
+            reponse.text.count('class="platine-pieu"'),
+            meilleure.nombre_pieux_total,
+        )
+        self.assertIn("dont les 4 coins", reponse.text)
 
     def test_formulaire_invalide_est_explique(self) -> None:
         reponse = self.client.post("/", data={})
@@ -164,6 +192,7 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
         data.update({
             "longueur_m": "6,0",
             "orientation": "auto",
+            "profil_fleche": "maison",
             "inclure_poids_propre": "on",
             "section_active": "0",
             "section_nom": "100 × 200",

@@ -96,6 +96,7 @@ button { border: 0; cursor: pointer; font: inherit; font-weight: 800; }
 .surface-plan { fill: #17231e; stroke: #77847e; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .poutre-plan { fill: #bd6f42; opacity: .78; }
 .rang-pieux { stroke: #72ad92; stroke-width: 2; stroke-dasharray: 10 10; opacity: .55; vector-effect: non-scaling-stroke; }
+.rang-pieux.rang-rive { opacity: .3; }
 .platine-pieu { fill: #79d5ac; stroke: #e0f8eb; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 .axe-pieu { fill: #183e31; stroke: #e0f8eb; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .pieu-plan:hover .platine-pieu { fill: #f0a06e; }

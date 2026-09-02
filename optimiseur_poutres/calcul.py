@@ -15,6 +15,14 @@ from typing import Literal
 
 
 Orientation = Literal["longueur", "largeur"]
+ProfilFleche = Literal["atelier", "maison", "maison_fragile", "toiture", "personnalise"]
+
+PROFILS_FLECHE: dict[str, float] = {
+    "atelier": 250.0,
+    "maison": 300.0,
+    "maison_fragile": 400.0,
+    "toiture": 200.0,
+}
 
 # Hypothèse V1 volontairement figée. La platine est descriptive : sa vérification
 # locale et celle de la liaison au bois restent hors du modèle.
@@ -77,6 +85,7 @@ class HypothesesProjet:
     # 0 laisse l'optimisation structurelle libre. Une valeur positive représente
     # la portée maximale provisoirement admise pour le futur système secondaire.
     entraxe_max_m: float = 4.0
+    profil_fleche: ProfilFleche = "maison"
     limite_fleche_diviseur: float = 300.0
     e_moyen_mpa: float = 11_000.0
     g_moyen_mpa: float = 690.0
@@ -118,6 +127,14 @@ class HypothesesProjet:
             raise ValueError("les dimensions et propriétés doivent être positives")
         if self.orientation not in ("auto", "longueur", "largeur"):
             raise ValueError("le sens de portée est invalide")
+        if self.profil_fleche not in (*PROFILS_FLECHE, "personnalise"):
+            raise ValueError("le profil de flèche est invalide")
+        if self.profil_fleche in PROFILS_FLECHE:
+            object.__setattr__(
+                self,
+                "limite_fleche_diviseur",
+                PROFILS_FLECHE[self.profil_fleche],
+            )
         if self.psi2 > 1 or self.coefficient_cisaillement > 1:
             raise ValueError("ψ₂ et le coefficient de cisaillement ne peuvent pas dépasser 1")
 
@@ -145,7 +162,9 @@ class ResultatConfiguration:
     nombre_poutres: int
     nombre_travees: int
     nombre_lignes_appui_intermediaires: int
-    nombre_appuis_ponctuels: int
+    nombre_pieux_intermediaires: int
+    nombre_pieux_rive: int
+    nombre_pieux_total: int
     entraxe_m: float
     longueur_totale_m: float
     cout_bois_eur: float
@@ -167,7 +186,7 @@ class ResultatConfiguration:
     contrainte_cisaillement_mpa: float
     resistance_cisaillement_mpa: float
     taux_cisaillement: float
-    reaction_appui_intermediaire_elu_kN: float
+    reaction_pieu_max_elu_kN: float
     capacite_appui_kN: float
     taux_appui: float
     conforme: bool
@@ -285,13 +304,15 @@ def evaluer_configuration(
     taux_flexion = contrainte_flexion / resistance_flexion
     taux_cisaillement = contrainte_cisaillement / resistance_cisaillement
     nombre_lignes_appui_intermediaires = nombre_travees - 1
-    # Deux travées simplement appuyées aboutissent sur chaque pieu intérieur :
-    # R = qL/2 + qL/2. Sans ligne intermédiaire, aucun pieu n'est chiffré ici.
-    reaction_appui_intermediaire = (
-        charge_elu * portee_m if nombre_lignes_appui_intermediaires else 0.0
+    # Un pieu de rive reprend qL/2. Un pieu intérieur commun à deux travées
+    # reprend qL/2 + qL/2 et gouverne dès qu'une rangée intermédiaire existe.
+    reaction_pieu_max = (
+        charge_elu * portee_m
+        if nombre_lignes_appui_intermediaires
+        else charge_elu * portee_m / 2
     )
     capacite_appui_kN = CAPACITE_PIEU_VISSE_TONNES * 9.81
-    taux_appui = reaction_appui_intermediaire / capacite_appui_kN
+    taux_appui = reaction_pieu_max / capacite_appui_kN
 
     contraintes: list[str] = []
     if portee_m > section.longueur_max_m:
@@ -316,9 +337,15 @@ def evaluer_configuration(
         / 1_000_000
         * hypotheses.masse_volumique_kg_m3
     )
-    nombre_appuis_ponctuels = nombre_poutres * nombre_lignes_appui_intermediaires
+    nombre_pieux_intermediaires = (
+        nombre_poutres * nombre_lignes_appui_intermediaires
+    )
+    # Chaque ligne de poutre simplement appuyée doit reposer aux deux rives.
+    # Les quatre intersections extrêmes sont donc toujours les quatre coins.
+    nombre_pieux_rive = 2 * nombre_poutres
+    nombre_pieux_total = nombre_pieux_intermediaires + nombre_pieux_rive
     cout_bois = longueur_totale * section.prix_eur_m
-    cout_appuis = nombre_appuis_ponctuels * COUT_PIEU_VISSE_EUR
+    cout_appuis = nombre_pieux_total * COUT_PIEU_VISSE_EUR
     return ResultatConfiguration(
         section=section,
         orientation=orientation,
@@ -328,7 +355,9 @@ def evaluer_configuration(
         nombre_poutres=nombre_poutres,
         nombre_travees=nombre_travees,
         nombre_lignes_appui_intermediaires=nombre_lignes_appui_intermediaires,
-        nombre_appuis_ponctuels=nombre_appuis_ponctuels,
+        nombre_pieux_intermediaires=nombre_pieux_intermediaires,
+        nombre_pieux_rive=nombre_pieux_rive,
+        nombre_pieux_total=nombre_pieux_total,
         entraxe_m=entraxe_m,
         longueur_totale_m=longueur_totale,
         cout_bois_eur=cout_bois,
@@ -350,7 +379,7 @@ def evaluer_configuration(
         contrainte_cisaillement_mpa=contrainte_cisaillement,
         resistance_cisaillement_mpa=resistance_cisaillement,
         taux_cisaillement=taux_cisaillement,
-        reaction_appui_intermediaire_elu_kN=reaction_appui_intermediaire,
+        reaction_pieu_max_elu_kN=reaction_pieu_max,
         capacite_appui_kN=capacite_appui_kN,
         taux_appui=taux_appui,
         conforme=not contraintes,

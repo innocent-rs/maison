@@ -79,7 +79,8 @@ just optimiseur-poutres
 Ouvrir ensuite <http://127.0.0.1:5051>. Les appuis intermédiaires sont modélisés
 comme des pieux vissés à `500 €` pièce et `5 t` de capacité statique. Ces valeurs
 et la platine de `200 mm` sont figées dans la V1 ; leur nombre est optimisé
-automatiquement. Les solives en I et
+automatiquement et chaque poutre possède un pieu à chacune de ses extrémités,
+ce qui garantit les quatre coins. Les solives en I et
 leurs sabots sont explicitement hors périmètre de cette V1. Le catalogue, les
 masses, la portée secondaire maximale provisoire et les coefficients de calcul
 sont modifiables dans l'interface. Les hypothèses et limites du modèle sont

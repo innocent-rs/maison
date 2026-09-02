@@ -11,6 +11,7 @@ from .calcul import (
     CatalogueSection,
     DIAMETRE_PLATINE_PIEU_MM,
     HypothesesProjet,
+    PROFILS_FLECHE,
     SECTIONS_FOURNISSEUR,
     optimiser,
 )
@@ -24,7 +25,6 @@ CHAMPS_NOMBRES = (
     "masse_ajoutee_totale_kg",
     "masse_volumique_kg_m3",
     "entraxe_max_m",
-    "limite_fleche_diviseur",
     "e_moyen_mpa",
     "g_moyen_mpa",
     "fm_k_mpa",
@@ -45,6 +45,17 @@ def _nombre(valeur: str, libelle: str) -> float:
 
 def _lire_hypotheses(formulaire: Any) -> HypothesesProjet:
     valeurs = {champ: _nombre(formulaire.get(champ, ""), champ) for champ in CHAMPS_NOMBRES}
+    profil_fleche = formulaire.get("profil_fleche", "maison")
+    if profil_fleche == "personnalise":
+        valeurs["limite_fleche_diviseur"] = _nombre(
+            formulaire.get("limite_fleche_diviseur", ""),
+            "limite de flèche personnalisée",
+        )
+    elif profil_fleche in PROFILS_FLECHE:
+        valeurs["limite_fleche_diviseur"] = PROFILS_FLECHE[profil_fleche]
+    else:
+        raise ValueError("le profil de flèche est invalide")
+    valeurs["profil_fleche"] = profil_fleche
     valeurs["orientation"] = formulaire.get("orientation", "auto")
     valeurs["inclure_poids_propre"] = formulaire.get("inclure_poids_propre") == "on"
     return HypothesesProjet(**valeurs)

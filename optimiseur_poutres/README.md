@@ -36,6 +36,15 @@ corrosion, la platine, la liaison au bois et les fondations de rive restent à
 dimensionner. Ces trois caractéristiques du pieu ne sont pas paramétrables dans
 la V1.
 
+Chaque poutre principale reçoit également un pieu à chacune de ses deux
+extrémités. Les quatre coins sont donc toujours présents et le coût affiché
+inclut tous les pieux de rive comme les pieux intermédiaires.
+
+La limite de flèche finale se choisit par profil de projet : atelier ou stockage
+léger `L/250`, maison `L/300`, maison avec finitions fragiles `L/400`, toiture
+non accessible `L/200`, ou diviseur personnalisé. Ces profils sont des
+hypothèses de pré-dimensionnement et non une validation réglementaire complète.
+
 Le catalogue initial provient de la fiche « Poutre et poteau en épicéa
 contrecollé C24 » de Matériaux Naturels, relevée le 2 septembre 2026. Les prix
 restent éditables dans l'interface.

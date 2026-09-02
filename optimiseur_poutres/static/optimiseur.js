@@ -37,3 +37,16 @@ function actualiserSurface() {
 document.querySelector('[name="longueur_m"]')?.addEventListener("input", actualiserSurface);
 document.querySelector('[name="largeur_m"]')?.addEventListener("input", actualiserSurface);
 actualiserSurface();
+
+const profilFleche = document.querySelector("#profil-fleche");
+const limitePersonnalisee = document.querySelector("#limite-personnalisee");
+
+function actualiserProfilFleche() {
+  if (!profilFleche || !limitePersonnalisee) return;
+  const personnalise = profilFleche.value === "personnalise";
+  limitePersonnalisee.hidden = !personnalise;
+  limitePersonnalisee.querySelector("input").required = personnalise;
+}
+
+profilFleche?.addEventListener("change", actualiserProfilFleche);
+actualiserProfilFleche();
