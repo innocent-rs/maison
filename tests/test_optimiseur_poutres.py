@@ -247,7 +247,7 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
         self.client = create_app({"TESTING": True}).test_client()
 
     @staticmethod
-    def _formulaire_valide() -> dict[str, str]:
+    def _formulaire_valide() -> dict[str, str | list[str]]:
         hypotheses = HypothesesProjet()
         data = {nom: str(getattr(hypotheses, nom)) for nom in (
             "longueur_m", "largeur_m", "masse_permanente_kg_m2",
@@ -269,6 +269,12 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
             "section_hauteur": "200",
             "section_prix": "29,02",
             "section_longueur_max": "13",
+            "entraxe_solives_max_mm": "600",
+            "classe_service_solives": "2",
+            "limite_fleche_solives_diviseur": "350",
+            "inclure_sabots": "on",
+            "solive_active": ["0", "1", "2"],
+            "solive_prix": ["14,10", "14,40", "20,30"],
         })
         return data
 
@@ -277,7 +283,8 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
         self.assertEqual(reponse.status_code, 200)
         self.assertIn("CHOIX LE MOINS CHER CONFORME", reponse.text)
         self.assertIn("Flèche finale", reponse.text)
-        self.assertIn("Solives en I hors calcul", reponse.text)
+        self.assertIn("Solives en I", reponse.text)
+        self.assertIn("CHOIX DE SOLIVES LE MOINS CHER CONFORME", reponse.text)
         self.assertIn("Plan à l’échelle", reponse.text)
         meilleure = optimiser(HypothesesProjet()).meilleure
         self.assertIsNotNone(meilleure)
@@ -298,6 +305,25 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
         self.assertEqual(reponse.status_code, 200)
         self.assertIn("CHOIX LE MOINS CHER CONFORME", reponse.text)
         self.assertNotIn('name="nombre_lignes_appui_max"', reponse.text)
+
+    def test_bouton_solives_rouvre_le_bon_onglet(self) -> None:
+        data = self._formulaire_valide()
+        data["onglet_actif"] = "solives"
+        reponse = self.client.post("/", data=data)
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIn('data-onglet-initial="solives"', reponse.text)
+        self.assertIn("Trame complète à l’échelle", reponse.text)
+        self.assertIn("automatiquement réinjecté dans G", reponse.text)
+
+    def test_sabots_peuvent_etre_exclus_du_chiffrage(self) -> None:
+        data = self._formulaire_valide()
+        data.pop("inclure_sabots")
+        data["onglet_actif"] = "solives"
+        reponse = self.client.post("/", data=data)
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIn("0 sabots estimés", reponse.text)
 
     def test_export_csv_contient_coordonnees_et_reactions(self) -> None:
         reponse = self.client.post(

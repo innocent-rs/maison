@@ -14,9 +14,14 @@ from .calcul import (
     HypothesesProjet,
     PROFILS_FLECHE,
     SECTIONS_FOURNISSEUR,
-    optimiser,
 )
 from .exports import csv_pieux, pdf_rapport
+from .solives import (
+    CatalogueSolive,
+    HypothesesSolives,
+    SOLIVES_FOURNISSEUR,
+    optimiser_systeme_porteur,
+)
 
 
 CHAMPS_NOMBRES = (
@@ -116,6 +121,70 @@ def _catalogue_formulaire(formulaire: Any) -> list[dict[str, Any]]:
     ]
 
 
+def _lire_hypotheses_solives(formulaire: Any) -> HypothesesSolives:
+    def valeur_ou_defaut(nom: str, defaut: float) -> float:
+        valeur = formulaire.get(nom)
+        return defaut if valeur in (None, "") else _nombre(valeur, nom)
+
+    classe_service = valeur_ou_defaut("classe_service_solives", 2)
+    if not classe_service.is_integer():
+        raise ValueError("la classe de service des solives doit être 1 ou 2")
+    inclure_sabots = (
+        formulaire.get("inclure_sabots") == "on"
+        if formulaire.get("entraxe_solives_max_mm") not in (None, "")
+        else True
+    )
+    return HypothesesSolives(
+        entraxe_max_mm=valeur_ou_defaut("entraxe_solives_max_mm", 600),
+        classe_service=int(classe_service),
+        limite_fleche_diviseur=valeur_ou_defaut(
+            "limite_fleche_solives_diviseur", 350
+        ),
+        inclure_sabots=inclure_sabots,
+    )
+
+
+def _lire_sections_solives(formulaire: Any) -> list[CatalogueSolive]:
+    prix = formulaire.getlist("solive_prix")
+    if not prix:
+        return list(SOLIVES_FOURNISSEUR)
+    actives = set(formulaire.getlist("solive_active"))
+    if len(prix) != len(SOLIVES_FOURNISSEUR):
+        raise ValueError("le catalogue de solives est incomplet")
+    sections = [
+        CatalogueSolive(
+            nom=section.nom,
+            largeur_mm=section.largeur_mm,
+            hauteur_mm=section.hauteur_mm,
+            prix_eur_m=_nombre(prix[index], f"prix de {section.nom}"),
+            poids_kg_m=section.poids_kg_m,
+            moment_caracteristique_kNm=section.moment_caracteristique_kNm,
+            cisaillement_caracteristique_kN=section.cisaillement_caracteristique_kN,
+            ei_moyen_kNm2=section.ei_moyen_kNm2,
+            ga_moyen_MN=section.ga_moyen_MN,
+            longueur_max_m=section.longueur_max_m,
+        )
+        for index, section in enumerate(SOLIVES_FOURNISSEUR)
+        if str(index) in actives
+    ]
+    if not sections:
+        raise ValueError("sélectionnez au moins une section de solive")
+    return sections
+
+
+def _catalogue_solives_formulaire(formulaire: Any) -> list[dict[str, Any]]:
+    prix = formulaire.getlist("solive_prix") if formulaire else []
+    actives = set(formulaire.getlist("solive_active")) if formulaire else set()
+    return [
+        {
+            **asdict(section),
+            "prix_eur_m": prix[index] if index < len(prix) else section.prix_eur_m,
+            "active": not formulaire or str(index) in actives,
+        }
+        for index, section in enumerate(SOLIVES_FOURNISSEUR)
+    ]
+
+
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
     if test_config:
@@ -127,28 +196,60 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         statut = 200
         if request.method == "GET":
             hypotheses = HypothesesProjet()
+            hypotheses_solives = HypothesesSolives()
             valeurs = asdict(hypotheses)
+            valeurs_solives = asdict(hypotheses_solives)
             catalogue = _catalogue_formulaire(None)
-            resultat = optimiser(hypotheses)
+            catalogue_solives = _catalogue_solives_formulaire(None)
+            systeme = optimiser_systeme_porteur(
+                hypotheses,
+                hypotheses_solives,
+            )
+            resultat = systeme.principales
+            resultat_solives = systeme.solives
+            masse_solives_kg_m2 = systeme.masse_solives_kg_m2
+            onglet_actif = "principales"
         else:
             valeurs = request.form.to_dict()
             valeurs["inclure_poids_propre"] = request.form.get("inclure_poids_propre") == "on"
+            valeurs_solives = request.form.to_dict()
+            valeurs_solives["inclure_sabots"] = request.form.get("inclure_sabots") == "on"
             catalogue = _catalogue_formulaire(request.form)
+            catalogue_solives = _catalogue_solives_formulaire(request.form)
+            onglet_actif = request.form.get("onglet_actif", "principales")
             try:
                 hypotheses = _lire_hypotheses(request.form)
+                hypotheses_solives = _lire_hypotheses_solives(request.form)
                 sections = _lire_sections(request.form)
-                resultat = optimiser(hypotheses, sections)
+                sections_solives = _lire_sections_solives(request.form)
+                systeme = optimiser_systeme_porteur(
+                    hypotheses,
+                    hypotheses_solives,
+                    sections,
+                    sections_solives,
+                )
+                resultat = systeme.principales
+                resultat_solives = systeme.solives
+                masse_solives_kg_m2 = systeme.masse_solives_kg_m2
                 valeurs = asdict(hypotheses)
+                valeurs_solives = asdict(hypotheses_solives)
             except ValueError as exception:
                 erreur = str(exception)
                 resultat = None
+                resultat_solives = None
+                masse_solives_kg_m2 = 0.0
                 statut = 400
         return (
             render_template(
                 "optimiseur.html",
                 valeurs=valeurs,
                 catalogue=catalogue,
+                catalogue_solives=catalogue_solives,
                 resultat=resultat,
+                resultat_solives=resultat_solives,
+                masse_solives_kg_m2=masse_solives_kg_m2,
+                valeurs_solives=valeurs_solives,
+                onglet_actif=onglet_actif,
                 platine_pieu_mm=DIAMETRE_PLATINE_PIEU_MM,
                 erreur=erreur,
             ),
@@ -158,11 +259,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.post("/export/pieux.csv")
     def exporter_pieux():
         try:
-            resultat = optimiser(
+            systeme = optimiser_systeme_porteur(
                 _lire_hypotheses(request.form),
+                _lire_hypotheses_solives(request.form),
                 _lire_sections(request.form),
+                _lire_sections_solives(request.form),
             )
-            contenu = csv_pieux(resultat)
+            contenu = csv_pieux(systeme.principales)
         except ValueError as exception:
             return Response(str(exception), status=400, mimetype="text/plain")
         return Response(
@@ -174,11 +277,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.post("/export/rapport.pdf")
     def exporter_rapport():
         try:
-            resultat = optimiser(
-                _lire_hypotheses(request.form),
+            hypotheses = _lire_hypotheses(request.form)
+            systeme = optimiser_systeme_porteur(
+                hypotheses,
+                _lire_hypotheses_solives(request.form),
                 _lire_sections(request.form),
+                _lire_sections_solives(request.form),
             )
-            contenu = pdf_rapport(resultat)
+            contenu = pdf_rapport(systeme.principales, systeme.solives)
         except ValueError as exception:
             return Response(str(exception), status=400, mimetype="text/plain")
         return send_file(

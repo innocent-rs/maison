@@ -1,9 +1,9 @@
-# Optimiseur de poutres principales en bois
+# Optimiseur du système poutres, pieux et solives en I
 
-Application Flask locale de pré-dimensionnement des poutres principales d'une
-surface rectangulaire. Elle compare les deux sens de portée, les sections du
-catalogue et le nombre de poutres principales, puis classe les solutions
-conformes par coût.
+Application Flask locale de pré-dimensionnement du système porteur d'une surface
+rectangulaire. Deux onglets dimensionnent successivement les poutres principales
+sur pieux vissés et les solives STEICOjoist posées perpendiculairement entre les
+principales.
 
 ```bash
 python -m optimiseur_poutres.webapp
@@ -17,11 +17,12 @@ simplifiée de compression du bois perpendiculairement au fil sur la platine.
 Il ne remplace pas une note de calcul : assemblages, arrachement, sol,
 stabilité, feu, séisme et panneaux ne sont pas vérifiés.
 
-Les futures solives en I ne sont ni dimensionnées ni chiffrées dans cette V1.
-Leurs réactions rapprochées sont assimilées à une charge linéique uniforme sur
-les poutres principales. Le champ de portée secondaire maximale sert seulement
-de contrainte géométrique provisoire ; sa valeur par défaut est `4 m` et `0` le
-désactive.
+## Poutres principales et pieux
+
+La distance entre deux poutres principales devient la portée utilisée dans
+l'onglet des solives. Le champ de portée secondaire maximale borne cette
+distance dès la recherche des principales ; sa valeur par défaut est `4 m` et
+`0` désactive uniquement cette borne géométrique.
 La recherche interdit toujours un entraxe inférieur à la largeur de la section,
 afin qu'une multiplication artificielle des poutres ne puisse pas masquer une
 section insuffisante.
@@ -58,7 +59,40 @@ flèche sous charge ponctuelle de `1 kN`. Cette jauge vibratoire est volontairem
 **indicative et non bloquante** : une vérification complète de l'Eurocode 5 doit
 inclure les solives secondaires, la masse et la rigidité du plancher, le
 diaphragme et l'amortissement. Elle n'est donc pas utilisée pour déclarer une
-configuration conforme dans cette V1.
+configuration conforme.
+
+## Solives STEICOjoist — V2
+
+Le catalogue initial reprend les trois produits disponibles sur la fiche
+Matériaux Naturels au 2 septembre 2026 :
+
+- `SJ60/240`, `14,10 €/m` ;
+- `SJ60/300`, `14,40 €/m` ;
+- `SJ90/360`, `20,30 €/m`.
+
+Les résistances caractéristiques `Mk` et `Vk`, les rigidités moyennes `EI` et
+`GA`, ainsi que les poids linéiques proviennent du guide STEICOconstruction et
+de l'ETA-20/0995. Les propriétés mécaniques sont verrouillées dans l'interface ;
+les prix restent éditables.
+
+Chaque solive est divisée en segments simplement appuyés entre deux poutres
+principales, conformément au principe de pose sur sabots retenu pour le projet.
+L'optimiseur recherche la référence et le nombre de lignes qui respectent
+l'entraxe maximal, la flexion, le cisaillement et la flèche finale. Le réglage
+initial est une classe de service 2, un entraxe maximal de `600 mm` et une limite
+de flèche `L/350`, cohérente avec l'abaque de pré-dimensionnement de plancher
+publié par STEICO.
+
+Deux sabots sont comptés par segment au prix indicatif de `7,30 €` pièce. Leur
+résistance, la référence exacte, les pointes, les renforts d'âme, les anti-dévers
+et les détails de rive restent à vérifier. Le poids propre des solives retenues
+est automatiquement converti en kg/m² et réinjecté dans la charge permanente
+des poutres principales et des pieux jusqu'à stabilisation de la solution.
+
+Le plan V2 superpose les principales et les solives à l'échelle. La fréquence
+propre et la flèche sous `1 kN` y restent indicatives tant que le panneau, son
+effet diaphragme, les assemblages et l'amortissement ne sont pas modélisés. Les
+machines et véhicules localisés constituent l'étape suivante.
 
 Trois lectures de l'optimisation sont présentées : coût minimal, nombre minimal
 de pieux et meilleure marge structurelle parmi les configurations explorées.
@@ -67,6 +101,6 @@ les hypothèses, les taux de travail, le plan à l'échelle et la descente de
 charges. Les résultats exportés sont recalculés depuis les valeurs visibles du
 formulaire.
 
-Le catalogue initial provient de la fiche « Poutre et poteau en épicéa
-contrecollé C24 » de Matériaux Naturels, relevée le 2 septembre 2026. Les prix
-restent éditables dans l'interface.
+Les catalogues initiaux proviennent des fiches « Poutre et poteau en épicéa
+contrecollé C24 » et « Poutre en I STEICO joist » de Matériaux Naturels,
+relevées le 2 septembre 2026. Les prix restent éditables dans l'interface.

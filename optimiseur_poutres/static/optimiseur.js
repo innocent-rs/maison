@@ -58,3 +58,29 @@ profilUsage?.addEventListener("change", () => {
   document.querySelector('[name="masse_permanente_kg_m2"]').value = option.dataset.g;
   document.querySelector('[name="masse_exploitation_kg_m2"]').value = option.dataset.q;
 });
+
+const racineOnglets = document.querySelector("main[data-onglet-initial]");
+const boutonsOnglets = [...document.querySelectorAll(".onglet-bouton")];
+const contenusOnglets = [...document.querySelectorAll("[data-onglet-contenu]")];
+
+function ouvrirOnglet(cible) {
+  const onglet = cible === "solives" ? "solives" : "principales";
+  boutonsOnglets.forEach((bouton) => {
+    const actif = bouton.dataset.cible === onglet;
+    bouton.classList.toggle("actif", actif);
+    bouton.setAttribute("aria-selected", String(actif));
+  });
+  contenusOnglets.forEach((contenu) => {
+    contenu.hidden = contenu.dataset.ongletContenu !== onglet;
+  });
+  window.history.replaceState(null, "", `#${onglet}`);
+}
+
+boutonsOnglets.forEach((bouton) => {
+  bouton.addEventListener("click", () => ouvrirOnglet(bouton.dataset.cible));
+});
+
+if (racineOnglets) {
+  const ongletHash = window.location.hash.slice(1);
+  ouvrirOnglet(ongletHash || racineOnglets.dataset.ongletInitial);
+}

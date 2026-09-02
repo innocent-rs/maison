@@ -10,6 +10,7 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 
 from .calcul import DIAMETRE_PLATINE_PIEU_MM, ResultatOptimisation
+from .solives import ResultatOptimisationSolives
 
 
 def csv_pieux(resultat: ResultatOptimisation) -> bytes:
@@ -48,7 +49,10 @@ def csv_pieux(resultat: ResultatOptimisation) -> bytes:
     return ("\ufeff" + flux.getvalue()).encode("utf-8")
 
 
-def pdf_rapport(resultat: ResultatOptimisation) -> bytes:
+def pdf_rapport(
+    resultat: ResultatOptimisation,
+    resultat_solives: ResultatOptimisationSolives | None = None,
+) -> bytes:
     configuration = resultat.meilleure
     if configuration is None:
         raise ValueError("aucune configuration conforme à exporter")
@@ -83,6 +87,45 @@ def pdf_rapport(resultat: ResultatOptimisation) -> bytes:
         ]
         axe.text(0.06, 0.96, "\n".join(lignes), va="top", fontsize=10, linespacing=1.55)
         pdf.savefig(figure)
+
+        if resultat_solives and resultat_solives.meilleure:
+            solives = resultat_solives.meilleure
+            figure_solives = Figure(figsize=(8.27, 11.69))
+            axe_solives = figure_solives.subplots()
+            axe_solives.axis("off")
+            total_systeme = configuration.cout_eur + solives.cout_eur
+            lignes_solives = [
+                "V2 — SOLIVES EN I",
+                "",
+                f"Choix : STEICOjoist {solives.section.nom}",
+                f"Portée : {solives.portee_m:.3f} m entre poutres principales",
+                f"Trame : {solives.nombre_lignes_solives} lignes à {solives.entraxe_mm:.0f} mm",
+                f"Débit : {solives.nombre_segments} segments · {solives.longueur_totale_m:.1f} m",
+                f"Sabots estimés : {solives.nombre_sabots} · réaction ELU max. {solives.reaction_sabot_elu_kN:.2f} kN",
+                "",
+                f"Flèche finale : {solives.fleche_finale_mm:.2f} / {solives.limite_fleche_mm:.2f} mm ({solives.taux_fleche * 100:.0f} %)",
+                f"Flexion ELU : {solives.moment_elu_kNm:.2f} / {solives.moment_resistant_kNm:.2f} kN·m ({solives.taux_flexion * 100:.0f} %)",
+                f"Cisaillement ELU : {solives.effort_tranchant_elu_kN:.2f} / {solives.effort_tranchant_resistant_kN:.2f} kN ({solives.taux_cisaillement * 100:.0f} %)",
+                f"Vibration indicative : {solives.frequence_propre_hz:.1f} Hz · w1kN {solives.fleche_sous_1kn_mm:.2f} mm",
+                "",
+                f"Coût solives : {solives.cout_solives_eur:.0f} €",
+                f"Coût estimatif sabots : {solives.cout_sabots_eur:.0f} €",
+                f"Total structure porteuse : {total_systeme:.0f} €",
+                "",
+                "LIMITES V2",
+                "Les segments de solive sont simplement appuyés entre poutres principales.",
+                "Les sabots sont comptés mais leur référence, fixation et résistance ne sont pas vérifiées.",
+                "Panneaux, entretoises, anti-dévers, renforts d'âme et charges localisées hors calcul.",
+            ]
+            axe_solives.text(
+                0.06,
+                0.96,
+                "\n".join(lignes_solives),
+                va="top",
+                fontsize=10,
+                linespacing=1.55,
+            )
+            pdf.savefig(figure_solives)
 
         figure_plan = Figure(figsize=(8.27, 8.27))
         plan = figure_plan.subplots()

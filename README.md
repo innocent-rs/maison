@@ -65,7 +65,7 @@ fixe les dépendances Nix.
 
 Les sorties du serveur sont conservées dans `.ocp-vscode.log`.
 
-### Optimiseur web de poutres principales
+### Optimiseur web du système porteur
 
 L'outil autonome compare les sections C24, les deux sens de portée, le nombre de
 poutres principales et les travées créées par des appuis intermédiaires. Il
@@ -81,13 +81,15 @@ Ouvrir ensuite <http://127.0.0.1:5051>. Les appuis intermédiaires sont modélis
 comme des pieux vissés à `500 €` pièce et `5 t` de capacité statique. Ces valeurs
 et la platine de `200 mm` sont figées dans la V1 ; leur nombre est optimisé
 automatiquement et chaque poutre possède un pieu à chacune de ses extrémités,
-ce qui garantit les quatre coins. Les solives en I et
-leurs sabots sont explicitement hors périmètre de cette V1. Le catalogue, les
-masses, la portée secondaire maximale provisoire et les coefficients de calcul
-sont modifiables dans l'interface. Un plan à l'échelle donne les coordonnées et
-réactions de chaque pieu ; l'implantation est exportable en CSV et le dossier de
-pré-dimensionnement en PDF. Une jauge vibratoire reste indicative jusqu'à la V2
-incluant le plancher secondaire. Les hypothèses et limites du modèle sont
+ce qui garantit les quatre coins. Un second onglet optimise désormais les
+STEICOjoist SJ60/240, SJ60/300 et SJ90/360 entre les principales, avec leur
+entraxe, leur flèche, leurs vérifications ELU et le chiffrage indicatif de deux
+sabots par segment. Leur poids propre est réinjecté automatiquement dans les
+principales et les pieux. Les catalogues, les masses, les entraxes et les
+coefficients de calcul sont modifiables dans l'interface. Les plans à l'échelle
+donnent les deux trames et les réactions ; l'implantation des pieux est
+exportable en CSV et le dossier complet en PDF. La vérification vibratoire reste
+indicative tant que le panneau et les assemblages ne sont pas modélisés. Les hypothèses et limites du modèle sont
 détaillées dans [optimiseur_poutres/README.md](optimiseur_poutres/README.md).
 
 ### Simulation du plancher fini

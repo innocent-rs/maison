@@ -16,10 +16,14 @@
       <div class="monogramme">EC<span>5</span></div>
     </header>
 
-    <main>
+    <main data-onglet-initial="{{ onglet_actif }}">
+      <nav class="onglets" aria-label="Étapes de dimensionnement">
+        <button type="button" class="onglet-bouton" data-cible="principales"><span>01</span>Poutres principales</button>
+        <button type="button" class="onglet-bouton" data-cible="solives"><span>02</span>Solives en I <small>V2</small></button>
+      </nav>
       {% if erreur %}<div class="alerte"><strong>Entrée invalide.</strong> {{ erreur }}</div>{% endif %}
       <form method="post" id="formulaire">
-        <section class="panneau hypotheses">
+        <section class="panneau hypotheses" data-onglet-contenu="principales">
           <div class="titre"><span>01</span><div><h2>Projet</h2><p>Rectangle, charges et critère de flèche</p></div></div>
           <div class="champs grille-4">
             <label>Longueur <small>m</small><input name="longueur_m" type="number" min="0.1" step="any" required value="{{ valeurs.get('longueur_m', '') }}"></label>
@@ -82,7 +86,7 @@
           </details>
         </section>
 
-        <section class="panneau catalogue">
+        <section class="panneau catalogue" data-onglet-contenu="principales">
           <div class="titre"><span>02</span><div><h2>Catalogue de sections</h2><p>Dimensions et prix TTC/m modifiables</p></div></div>
           <div class="table-wrap">
             <table id="catalogue-table">
@@ -102,14 +106,54 @@
               </tbody>
             </table>
           </div>
-          <div class="actions"><button id="ajouter" class="secondaire" type="button">+ Ajouter une section</button><button class="calculer" type="submit">Optimiser les principales <span>→</span></button></div>
+          <div class="actions"><button id="ajouter" class="secondaire" type="button">+ Ajouter une section</button><button class="calculer" type="submit" name="onglet_actif" value="principales">Optimiser les principales <span>→</span></button></div>
           <p class="source">Catalogue initial : <a href="https://www.materiaux-naturels.fr/produit/1258-poutre-poteau-epicea-contrecolle-c24" target="_blank" rel="noreferrer">Matériaux Naturels</a>, relevé le 2 septembre 2026. Les tarifs, longueurs et propriétés doivent être confirmés avant commande.</p>
+        </section>
+
+        <section class="panneau catalogue-solives" data-onglet-contenu="solives">
+          <div class="titre"><span>02</span><div><h2>Solives STEICOjoist</h2><p>Segments entre poutres principales, posés sur sabots</p></div></div>
+          {% if resultat and resultat.meilleure %}
+          <div class="contexte-solives">
+            <span>Support calculé automatiquement</span>
+            <strong>{{ resultat.meilleure.nombre_poutres }} poutres {{ resultat.meilleure.section.nom }} · portée des solives {{ '%.3f'|format(resultat.meilleure.entraxe_m) }} m</strong>
+            <small>Les solives sont perpendiculaires aux poutres principales. Leur poids propre, {{ '%.1f'|format(masse_solives_kg_m2) }} kg/m², est automatiquement réinjecté dans G pour vérifier les principales et les pieux.</small>
+          </div>
+          {% endif %}
+          <div class="champs grille-4">
+            <label>Entraxe maximal <small>mm</small><input name="entraxe_solives_max_mm" type="number" min="100" step="any" required value="{{ valeurs_solives.get('entraxe_max_mm', '') }}"></label>
+            <label>Classe de service <small>STEICO / EC5</small>
+              <select name="classe_service_solives">
+                <option value="1" {% if valeurs_solives.get('classe_service') == 1 %}selected{% endif %}>Classe 1 — plancher intérieur chauffé</option>
+                <option value="2" {% if valeurs_solives.get('classe_service') == 2 %}selected{% endif %}>Classe 2 — plancher sur vide sanitaire</option>
+              </select>
+            </label>
+            <label>Limite de flèche <small>L / diviseur</small><input name="limite_fleche_solives_diviseur" type="number" min="1" step="any" required value="{{ valeurs_solives.get('limite_fleche_diviseur', '') }}"></label>
+            <label class="case carte-case"><input name="inclure_sabots" type="checkbox" {% if valeurs_solives.get('inclure_sabots') %}checked{% endif %}> Chiffrer deux sabots par segment <small>7,30 € pièce · résistance non vérifiée</small></label>
+          </div>
+          <div class="table-wrap">
+            <table class="table-solives">
+              <thead><tr><th>Tester</th><th>Référence</th><th>Section</th><th>Poids</th><th>M<sub>k</sub></th><th>V<sub>k</sub></th><th>EI</th><th>GA</th><th>€/m</th></tr></thead>
+              <tbody>{% for solive in catalogue_solives %}<tr>
+                <td><input name="solive_active" type="checkbox" value="{{ loop.index0 }}" {% if solive.active %}checked{% endif %}></td>
+                <th>{{ solive.nom }}</th>
+                <td>{{ '%.0f'|format(solive.largeur_mm) }} × {{ '%.0f'|format(solive.hauteur_mm) }} mm</td>
+                <td>{{ '%.1f'|format(solive.poids_kg_m) }} kg/m</td>
+                <td>{{ '%.2f'|format(solive.moment_caracteristique_kNm) }} kN·m</td>
+                <td>{{ '%.2f'|format(solive.cisaillement_caracteristique_kN) }} kN</td>
+                <td>{{ '%.0f'|format(solive.ei_moyen_kNm2) }} kN·m²</td>
+                <td>{{ '%.2f'|format(solive.ga_moyen_MN) }} MN</td>
+                <td><input name="solive_prix" type="number" min="0.01" step="any" required value="{{ solive.prix_eur_m }}"></td>
+              </tr>{% endfor %}</tbody>
+            </table>
+          </div>
+          <div class="actions actions-solives"><span>Les valeurs mécaniques sont verrouillées sur l’ETA-20/0995.</span><button class="calculer" type="submit" name="onglet_actif" value="solives">Optimiser les solives <span>→</span></button></div>
+          <p class="source">Prix : <a href="https://www.materiaux-naturels.fr/produit/1070-poutre-en-i-steico-joist" target="_blank" rel="noreferrer">Matériaux Naturels</a>. Propriétés : <a href="https://www.steico.com/fileadmin/user_upload/importer/downloads/4028b609775e65ec0177d608769c2bda/Guide_technique_STEICOconstruction_FR_i.pdf" target="_blank" rel="noreferrer">guide technique STEICOconstruction</a>. Relevé le 2 septembre 2026.</p>
         </section>
       </form>
 
       {% if resultat and resultat.meilleure %}
       {% set m = resultat.meilleure %}
-      <section class="resultat-hero">
+      <section class="resultat-hero" data-onglet-contenu="principales">
         <div class="rang"><span>CHOIX LE MOINS CHER CONFORME</span><strong>#1</strong></div>
         <div class="hero-grid">
           <div class="prescription">
@@ -178,6 +222,7 @@
           <div><dt>Critère dimensionnant</dt><dd>{{ m.critere_dimensionnant }}</dd></div>
           <div><dt>Pieux vissés</dt><dd>{{ m.nombre_pieux_total }} au total · {{ m.nombre_pieux_rive }} aux rives</dd></div>
           <div><dt>Masse des principales</dt><dd>{{ '%.0f'|format(m.masse_poutres_kg) }} kg</dd></div>
+          <div><dt>Poids propre des solives</dt><dd>+ {{ '%.1f'|format(masse_solives_kg_m2) }} kg/m² dans G</dd></div>
           <div><dt>Charge G / poutre</dt><dd>{{ '%.2f'|format(m.charge_g_kN_m) }} kN/m</dd></div>
           <div><dt>Charge Q / poutre</dt><dd>{{ '%.2f'|format(m.charge_q_kN_m) }} kN/m</dd></div>
           <div><dt>Moment ELU</dt><dd>{{ '%.2f'|format(m.moment_elu_kN_m) }} kN·m</dd></div>
@@ -190,7 +235,7 @@
           </tbody></table></div>
         </details>
       </section>
-      <section class="objectifs">
+      <section class="objectifs" data-onglet-contenu="principales">
         {% for titre, choix in (('Moins cher', resultat.meilleure), ('Moins de pieux', resultat.moins_de_pieux), ('Meilleure marge', resultat.meilleure_marge)) %}
         <article class="panneau {% if choix == resultat.meilleure %}actif{% endif %}">
           <span>{{ titre }}</span><h3>{{ choix.section.nom }}</h3>
@@ -199,17 +244,53 @@
         </article>
         {% endfor %}
       </section>
-      <section class="exports-actions">
+      <section class="exports-actions" data-onglet-contenu="principales">
         <div><strong>Dossier de décision</strong><span>Les exports reprennent les valeurs actuellement saisies dans le formulaire.</span></div>
         <button type="submit" form="formulaire" formaction="{{ url_for('exporter_pieux') }}" formmethod="post">Télécharger les pieux CSV</button>
         <button type="submit" form="formulaire" formaction="{{ url_for('exporter_rapport') }}" formmethod="post">Télécharger le rapport PDF</button>
       </section>
       {% elif resultat %}
-      <section class="aucune"><h2>Aucune configuration conforme</h2><p>Ajoutez une section plus rigide ou vérifiez les hypothèses. Les rangées de pieux sont déjà recherchées automatiquement et les poutres ne sont jamais rapprochées au-delà de leur largeur physique.</p></section>
+      <section class="aucune" data-onglet-contenu="principales"><h2>Aucune configuration conforme</h2><p>Ajoutez une section plus rigide ou vérifiez les hypothèses. Les rangées de pieux sont déjà recherchées automatiquement et les poutres ne sont jamais rapprochées au-delà de leur largeur physique.</p></section>
       {% endif %}
 
+      {% if resultat_solives and resultat_solives.meilleure %}
+      {% set s = resultat_solives.meilleure %}
+      {% set support = resultat_solives.support %}
+      <section class="resultat-hero resultat-solives" data-onglet-contenu="solives">
+        <div class="rang"><span>CHOIX DE SOLIVES LE MOINS CHER CONFORME</span><strong>V2</strong></div>
+        <div class="hero-grid">
+          <div class="prescription"><p class="section-nom">STEICOjoist</p><h2>{{ s.section.nom }} <span>{{ s.nombre_lignes_solives }} lignes · entraxe {{ '%.0f'|format(s.entraxe_mm) }} mm</span></h2><p>{{ s.nombre_segments }} segments simplement appuyés de {{ '%.3f'|format(s.portee_m) }} m entre les {{ support.nombre_poutres }} poutres principales · {{ s.nombre_sabots }} sabots estimés</p></div>
+          <div class="prix"><strong>{{ '%.0f'|format(s.cout_eur) }} €</strong><span>{{ '%.0f'|format(s.cout_solives_eur) }} € de solives + {{ '%.0f'|format(s.cout_sabots_eur) }} € de sabots · système porteur total {{ '%.0f'|format(s.cout_eur + support.cout_eur) }} €</span></div>
+        </div>
+        <div class="jauges">
+          {% for nom, taux, valeur, limite, unite in (
+            ('Flèche finale', s.taux_fleche, s.fleche_finale_mm, s.limite_fleche_mm, 'mm'),
+            ('Flexion ELU', s.taux_flexion, s.moment_elu_kNm, s.moment_resistant_kNm, 'kN·m'),
+            ('Cisaillement ELU', s.taux_cisaillement, s.effort_tranchant_elu_kN, s.effort_tranchant_resistant_kN, 'kN')
+          ) %}<div class="jauge-bloc"><div class="jauge-titre"><span>{{ nom }}</span><strong>{{ '%.0f'|format(taux * 100) }} %</strong></div><div class="jauge {% if taux > 1 %}ko{% elif taux > 0.8 %}attention{% endif %}"><i style="width: {{ [taux * 100, 100]|min }}%"></i></div><small>{{ '%.2f'|format(valeur) }} / {{ '%.2f'|format(limite) }} {{ unite }}</small></div>{% endfor %}
+          {% if s.taux_vibration is not none %}<div class="jauge-bloc indicatif"><div class="jauge-titre"><span>Vibration indicative</span><strong>{{ '%.0f'|format(s.taux_vibration * 100) }} %</strong></div><div class="jauge {% if s.taux_vibration > 1 %}ko{% elif s.taux_vibration > 0.8 %}attention{% endif %}"><i style="width: {{ [s.taux_vibration * 100, 100]|min }}%"></i></div><small>{{ '%.1f'|format(s.frequence_propre_hz) }} Hz · w₁kN {{ '%.2f'|format(s.fleche_sous_1kn_mm) }} mm · indicatif</small></div>{% endif %}
+        </div>
+        {% if resultat_solives.meilleure_confort and resultat_solives.meilleure_confort != s %}{% set sc = resultat_solives.meilleure_confort %}<div class="conseil-confort"><div><span>ALTERNATIVE CONFORT CONSEILLÉE</span><strong>{{ sc.section.nom }} · vibration indicative {{ '%.0f'|format(sc.taux_vibration * 100) }} %</strong><small>Même trame de {{ sc.nombre_lignes_solives }} lignes à {{ '%.0f'|format(sc.entraxe_mm) }} mm.</small></div><div><strong>+ {{ '%.0f'|format(sc.cout_eur - s.cout_eur) }} €</strong><small>{{ '%.0f'|format(sc.cout_eur) }} € pour les solives et sabots</small></div></div>{% endif %}
+        {% set plan_l = support.largeur_repartie_m * 1000 %}{% set plan_h = support.portee_totale_m * 1000 %}
+        <div class="schema"><div class="schema-entete"><div><strong>Trame complète à l’échelle</strong><span>Poutres principales verticales · solives en I horizontales</span></div><div class="legende-plan"><span class="legende-poutre">Principales</span><span class="legende-solive">STEICOjoist {{ s.section.largeur_mm|int }} mm</span></div></div>
+          <svg class="plan-svg" viewBox="-100 -100 {{ plan_l + 200 }} {{ plan_h + 200 }}" width="{{ plan_l + 200 }}" height="{{ plan_h + 200 }}" role="img" aria-label="Plan à l’échelle des poutres principales et solives en I">
+            <rect class="surface-plan" x="0" y="0" width="{{ plan_l }}" height="{{ plan_h }}" />
+            {% for i in range(s.nombre_lignes_solives) %}{% set y_solive = i / (s.nombre_lignes_solives - 1) * plan_h %}<rect class="solive-plan" x="0" y="{{ y_solive - s.section.largeur_mm / 2 }}" width="{{ plan_l }}" height="{{ s.section.largeur_mm }}"><title>Solive {{ loop.index }} · {{ s.section.nom }} · axe {{ '%.0f'|format(y_solive) }} mm</title></rect>{% endfor %}
+            {% for i in range(support.nombre_poutres) %}{% set x_poutre = i / (support.nombre_poutres - 1) * plan_l %}<rect class="poutre-plan" x="{{ x_poutre - support.section.largeur_mm / 2 }}" y="0" width="{{ support.section.largeur_mm }}" height="{{ plan_h }}" />{% endfor %}
+            {% for i in range(s.nombre_lignes_solives) %}{% set y_sabot = i / (s.nombre_lignes_solives - 1) * plan_h %}{% for j in range(support.nombre_poutres) %}{% set x_sabot = j / (support.nombre_poutres - 1) * plan_l %}<circle class="sabot-plan" cx="{{ x_sabot }}" cy="{{ y_sabot }}" r="28"><title>Jonction à vérifier · réaction ELU jusqu’à {{ '%.2f'|format(s.reaction_sabot_elu_kN) }} kN</title></circle>{% endfor %}{% endfor %}
+          </svg>
+          <div class="schema-cotes"><span>↔ {{ support.nombre_poutres - 1 }} travées × {{ '%.3f'|format(s.portee_m) }} m</span><span>{{ s.nombre_lignes_solives }} lignes sur {{ '%.2f'|format(s.longueur_zone_m) }} m</span><span>{{ s.nombre_sabots }} sabots chiffrés, fixation à vérifier</span></div>
+        </div>
+        <dl class="metriques"><div><dt>Critère dimensionnant</dt><dd>{{ s.critere_dimensionnant }}</dd></div><div><dt>Longueur totale</dt><dd>{{ '%.1f'|format(s.longueur_totale_m) }} m</dd></div><div><dt>Masse des solives</dt><dd>{{ '%.0f'|format(s.masse_solives_kg) }} kg</dd></div><div><dt>Réaction par sabot</dt><dd>{{ '%.2f'|format(s.reaction_sabot_elu_kN) }} kN ELU</dd></div><div><dt>Charge G / solive</dt><dd>{{ '%.2f'|format(s.charge_g_kN_m) }} kN/m</dd></div><div><dt>Charge Q / solive</dt><dd>{{ '%.2f'|format(s.charge_q_kN_m) }} kN/m</dd></div><div><dt>Total porteur</dt><dd>{{ '%.0f'|format(s.cout_eur + support.cout_eur) }} €</dd></div></dl>
+      </section>
+      {% elif resultat_solives %}<section class="aucune" data-onglet-contenu="solives"><h2>Aucune solive conforme</h2><p>Réduisez l’entraxe maximal, ajoutez une référence plus rigide ou modifiez la trame des poutres principales.</p></section>{% endif %}
+
+      {% if resultat_solives %}<section class="panneau comparaison" data-onglet-contenu="solives"><div class="titre"><span>03</span><div><h2>Comparatif des solives</h2><p>Première trame conforme et économique pour chaque référence</p></div></div><div class="table-wrap"><table><thead><tr><th>Référence</th><th>Portée</th><th>Lignes</th><th>Entraxe</th><th>Flèche</th><th>Flexion</th><th>Cisaillement</th><th>Vibration*</th><th>Sabots</th><th>Coût</th></tr></thead><tbody>{% for c in resultat_solives.configurations %}<tr class="{% if not c.conforme %}non-conforme{% endif %}"><th>{{ c.section.nom }}</th><td>{{ '%.3f'|format(c.portee_m) }} m</td><td>{{ c.nombre_lignes_solives }}</td><td>{{ '%.0f'|format(c.entraxe_mm) }} mm</td><td>{{ '%.0f'|format(c.taux_fleche * 100) }} %</td><td>{{ '%.0f'|format(c.taux_flexion * 100) }} %</td><td>{{ '%.0f'|format(c.taux_cisaillement * 100) }} %</td><td>{% if c.taux_vibration is not none %}<span class="pastille {% if c.taux_vibration > 1 %}ko{% endif %}">{{ '%.0f'|format(c.taux_vibration * 100) }} %</span>{% else %}—{% endif %}</td><td>{{ c.nombre_sabots }}</td><td><strong>{{ '%.0f'|format(c.cout_eur) }} €</strong>{% if not c.conforme %}<small>{{ c.contraintes|join(', ') }}</small>{% endif %}</td></tr>{% endfor %}</tbody></table></div><p class="source">* Indicateur comparatif non bloquant, à confirmer sur le plancher complet.</p></section>{% endif %}
+
+      <section class="notes notes-solives" data-onglet-contenu="solives"><article><span>MODÈLE V2</span><h3>Segments sur sabots</h3><p>Chaque solive est découpée entre deux poutres principales et calculée comme simplement appuyée. Deux sabots sont comptés par segment.</p></article><article><span>ETA-20/0995</span><h3>Rigidités fabricant</h3><p>Flexion et cisaillement utilisent directement M<sub>k</sub>, V<sub>k</sub>, EI et GA publiés par STEICO, avec les facteurs de modification de classe de service.</p></article><article><span>À VÉRIFIER</span><h3>Sabots et renforts</h3><p>Le prix des EWH est estimé à 7,30 € pièce. Référence, pointes, capacité, renforts d’âme, anti-dévers et détails de rive restent à valider.</p></article><article><span>PROCHAINE ÉTAPE</span><h3>Objets lourds</h3><p>Les machines et véhicules localisés ne sont pas encore appliqués aux solives. Leur descente de charge sera ajoutée sur cette trame secondaire.</p></article></section>
+
       {% if resultat %}
-      <section class="panneau comparaison">
+      <section class="panneau comparaison" data-onglet-contenu="principales">
         <div class="titre"><span>03</span><div><h2>Comparatif</h2><p>Meilleure trame principale de chaque section et de chaque sens</p></div></div>
         <div class="table-wrap">
           <table>
@@ -236,15 +317,15 @@
       </section>
       {% endif %}
 
-      <section class="notes">
+      <section class="notes" data-onglet-contenu="principales">
         <article><span>HYPOTHÈSE</span><h3>Travées égales</h3><p>Chaque travée est calculée comme simplement appuyée. Sous charge uniforme, leur répartition égale minimise la portée dimensionnante. La continuité éventuelle de la poutre n’est pas créditée.</p></article>
         <article><span>ELS</span><h3>Profils de flèche</h3><p>w<sub>fin</sub> = w<sub>G</sub>(1+k<sub>def</sub>) + w<sub>Q</sub>(1+ψ₂k<sub>def</sub>). Atelier L/250, maison L/300, finitions fragiles L/400 et toiture L/200 sont des hypothèses de projet modifiables.</p></article>
-        <article><span>V2</span><h3>Solives en I hors calcul</h3><p>Leur section, leur entraxe, leur flèche et les sabots ne sont pas optimisés ici. Le champ « portée secondaire maximale » n’est qu’une contrainte géométrique provisoire ; laissez 0 pour ne pas l’utiliser.</p></article>
+        <article><span>COUPLAGE V2</span><h3>Portée des solives</h3><p>La distance entre poutres principales devient la portée calculée dans l’onglet Solives en I. Le champ « portée secondaire maximale » borne cette distance dès l’optimisation des principales.</p></article>
         <article><span>PIEUX VISSÉS</span><h3>Rives et quatre coins</h3><p>Chaque poutre repose sur un pieu à ses deux extrémités : les quatre coins sont donc toujours présents. Un pieu intérieur reçoit les demi-réactions des deux travées adjacentes. Les 5 t sont provisoirement comparées à la réaction ELU.</p></article>
         <article><span>CONFORT</span><h3>Vibration indicative</h3><p>La fréquence et la flèche sous 1 kN portent sur une poutre principale isolée. Sans solives en I, diaphragme, masse modale et amortissement du plancher complet, cette jauge informe mais ne bloque pas l’optimisation.</p></article>
         <article><span>À FAIRE VALIDER</span><h3>Pré-dimensionnement</h3><p>La compression bois/platine est simplifiée. Sol, flambement, corrosion et arrachement des pieux, résistance et fixation de la platine, liaisons, effets horizontaux, rives et stabilité globale restent hors calcul.</p></article>
       </section>
-      <p class="references">Références de méthode : NF EN 1990 / 1991 / 1995-1-1 et Annexe nationale française. Ressources : <a href="https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-5-design-timber-structures" target="_blank" rel="noreferrer">Commission européenne · Eurocode 5</a> et <a href="https://www.fcba.fr/wp-content/uploads/2025/10/guide-panneau-septembre-2025.pdf" target="_blank" rel="noreferrer">guide technique FCBA</a>.</p>
+      <p class="references" data-onglet-contenu="principales">Références de méthode : NF EN 1990 / 1991 / 1995-1-1 et Annexe nationale française. Ressources : <a href="https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-5-design-timber-structures" target="_blank" rel="noreferrer">Commission européenne · Eurocode 5</a> et <a href="https://www.fcba.fr/wp-content/uploads/2025/10/guide-panneau-septembre-2025.pdf" target="_blank" rel="noreferrer">guide technique FCBA</a>.</p>
     </main>
     <footer>Trame · outil de préconception — validation par un bureau d’études structure indispensable</footer>
     <script src="{{ url_for('static', filename='optimiseur.js') }}"></script>
