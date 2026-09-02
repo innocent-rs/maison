@@ -333,8 +333,19 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
         reponse = self.client.post("/", data=data)
 
         self.assertEqual(reponse.status_code, 200)
-        self.assertIn("Solive plus haute que la poutre principale", reponse.text)
+        self.assertIn("Solive plus haute : assemblage hors détail EWH standard", reponse.text)
         self.assertIn("EWH 300/61", reponse.text)
+        self.assertIn("L’optimiseur ne valide donc pas", reponse.text)
+
+    def test_longueur_non_modulaire_conserve_l_entraxe_isolant(self) -> None:
+        data = self._formulaire_valide()
+        data["orientation"] = "longueur"
+        data["onglet_actif"] = "solives"
+        reponse = self.client.post("/", data=data)
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIn("9 travées courantes à 625 mm", reponse.text)
+        self.assertIn("dernière travée de rive est ajustée à 375 mm", reponse.text)
 
     def test_isolant_600_affiche_l_adaptation_necessaire(self) -> None:
         data = self._formulaire_valide()

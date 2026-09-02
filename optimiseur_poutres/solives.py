@@ -98,7 +98,10 @@ class ResultatConfigurationSolives:
     nombre_lignes_solives: int
     nombre_segments: int
     nombre_sabots: int
+    axes_mm: tuple[float, ...]
     entraxe_mm: float
+    nombre_travees_modulaires: int
+    entraxes_rive_mm: tuple[float, ...]
     largeur_vide_isolant_mm: float
     compression_isolant_mm: float | None
     depassement_sous_principale_mm: float
@@ -145,6 +148,16 @@ class ResultatConfigurationSolives:
         # transformer l'isolant souple en variable structurelle.
         return 0 <= self.compression_isolant_mm <= 20
 
+    @property
+    def isolant_sans_recoupe(self) -> bool | None:
+        if self.isolant_compatible is None:
+            return None
+        return self.isolant_compatible and not self.entraxes_rive_mm
+
+    @property
+    def assemblage_standard_compatible(self) -> bool:
+        return self.depassement_sous_principale_mm <= 1e-9
+
 
 @dataclass(frozen=True, slots=True)
 class ResultatOptimisationSolives:
@@ -183,19 +196,124 @@ def _fleche_ponctuelle_1kn_mm(
     return (flexion_m + cisaillement_m) * 1_000
 
 
+def _calepinage_axes_mm(
+    longueur_mm: float,
+    nombre_lignes: int,
+    largeur_solive_mm: float,
+    entraxe_courant_mm: float | None,
+) -> tuple[tuple[float, ...], int, tuple[float, ...]]:
+    """Place une trame modulaire et reporte le reliquat sur une ou deux rives.
+
+    Les deux axes extrêmes restent sur les limites du rectangle. Une seule
+    travée de rive est ajustée tant qu'elle peut contenir deux membrures sans
+    chevauchement. Sinon le reliquat est partagé entre les deux rives.
+    """
+    nombre_travees = nombre_lignes - 1
+    entraxe_uniforme = longueur_mm / nombre_travees
+    entraxe = entraxe_uniforme if entraxe_courant_mm is None else entraxe_courant_mm
+    tolerance = 1e-7
+    if entraxe + tolerance < entraxe_uniforme:
+        raise ValueError("l'entraxe courant ne permet pas de couvrir la zone")
+    if abs(entraxe - entraxe_uniforme) <= tolerance or nombre_travees <= 1:
+        axes = tuple(index * entraxe_uniforme for index in range(nombre_lignes))
+        return axes, nombre_travees, ()
+
+    derniere_travee = longueur_mm - (nombre_travees - 1) * entraxe
+    if derniere_travee + tolerance >= largeur_solive_mm:
+        intervalles = [entraxe] * (nombre_travees - 1) + [derniere_travee]
+        nombre_modulaires = nombre_travees - 1
+        entraxes_rive = (derniere_travee,)
+    else:
+        entraxe_rive = (
+            longueur_mm - (nombre_travees - 2) * entraxe
+        ) / 2
+        if entraxe_rive + tolerance < largeur_solive_mm:
+            raise ValueError("le calepinage crée un chevauchement en rive")
+        intervalles = (
+            [entraxe_rive]
+            + [entraxe] * (nombre_travees - 2)
+            + [entraxe_rive]
+        )
+        nombre_modulaires = nombre_travees - 2
+        entraxes_rive = (entraxe_rive, entraxe_rive)
+
+    axes_liste = [0.0]
+    for intervalle in intervalles:
+        axes_liste.append(axes_liste[-1] + intervalle)
+    axes_liste[-1] = longueur_mm
+    return tuple(axes_liste), nombre_modulaires, entraxes_rive
+
+
+def _entraxes_candidats_mm(
+    longueur_mm: float,
+    nombre_lignes: int,
+    section: CatalogueSolive,
+    hypotheses: HypothesesSolives,
+) -> tuple[float, ...]:
+    """Retourne les pas utiles : module visé, limite compatible et uniforme."""
+    nombre_travees = nombre_lignes - 1
+    uniforme = longueur_mm / nombre_travees
+    if nombre_travees <= 1:
+        return (uniforme,)
+
+    # Au-delà de cette valeur, même deux rives ajustées feraient se
+    # chevaucher les membrures extrêmes.
+    if nombre_travees == 2:
+        maximum_geometrique = longueur_mm / 2
+    else:
+        maximum_geometrique = (
+            longueur_mm - 2 * section.largeur_mm
+        ) / (nombre_travees - 2)
+    maximum = min(hypotheses.entraxe_max_mm, maximum_geometrique)
+    if maximum + 1e-9 < uniforme:
+        return (uniforme,)
+
+    if not hypotheses.largeur_isolant_mm:
+        return (uniforme,)
+
+    cible = (
+        section.largeur_mm + hypotheses.largeur_isolant_mm - 10
+    )
+    limite_compatible = (
+        section.largeur_mm + hypotheses.largeur_isolant_mm - 20
+    )
+    valeurs = (
+        min(max(cible, uniforme), maximum),
+        min(max(limite_compatible, uniforme), maximum),
+        uniforme,
+    )
+    uniques: list[float] = []
+    for valeur in valeurs:
+        if not any(abs(valeur - existante) <= 1e-7 for existante in uniques):
+            uniques.append(valeur)
+    return tuple(uniques)
+
+
 def evaluer_solives(
     projet: HypothesesProjet,
     hypotheses: HypothesesSolives,
     support: ResultatConfiguration,
     section: CatalogueSolive,
     nombre_lignes_solives: int,
+    *,
+    entraxe_courant_mm: float | None = None,
 ) -> ResultatConfigurationSolives:
     if nombre_lignes_solives < 2:
         raise ValueError("il faut au moins deux lignes de solives")
 
     portee_m = support.entraxe_m
     longueur_zone_m = support.portee_totale_m
-    entraxe_m = longueur_zone_m / (nombre_lignes_solives - 1)
+    axes_mm, nombre_travees_modulaires, entraxes_rive_mm = _calepinage_axes_mm(
+        longueur_zone_m * 1_000,
+        nombre_lignes_solives,
+        section.largeur_mm,
+        entraxe_courant_mm,
+    )
+    intervalles_mm = tuple(
+        droite - gauche for gauche, droite in zip(axes_mm, axes_mm[1:])
+    )
+    entraxe_mm = max(intervalles_mm)
+    entraxe_m = entraxe_mm / 1_000
     largeur_vide_isolant = entraxe_m * 1_000 - section.largeur_mm
     compression_isolant = (
         hypotheses.largeur_isolant_mm - largeur_vide_isolant
@@ -280,7 +398,10 @@ def evaluer_solives(
         nombre_lignes_solives=nombre_lignes_solives,
         nombre_segments=nombre_segments,
         nombre_sabots=nombre_sabots,
-        entraxe_mm=entraxe_m * 1_000,
+        axes_mm=axes_mm,
+        entraxe_mm=entraxe_mm,
+        nombre_travees_modulaires=nombre_travees_modulaires,
+        entraxes_rive_mm=entraxes_rive_mm,
         largeur_vide_isolant_mm=largeur_vide_isolant,
         compression_isolant_mm=compression_isolant,
         depassement_sous_principale_mm=depassement_sous_principale,
@@ -328,22 +449,45 @@ def optimiser_solives(
             2,
             floor(support.portee_totale_m / (section.largeur_mm / 1_000)) + 1,
         )
-        candidats = [
-            evaluer_solives(projet, hypotheses, support, section, nombre)
-            for nombre in range(minimum, maximum + 1)
-        ]
+        candidats: list[ResultatConfigurationSolives] = []
+        for nombre in range(minimum, maximum + 1):
+            for entraxe in _entraxes_candidats_mm(
+                support.portee_totale_m * 1_000,
+                nombre,
+                section,
+                hypotheses,
+            ):
+                candidats.append(
+                    evaluer_solives(
+                        projet,
+                        hypotheses,
+                        support,
+                        section,
+                        nombre,
+                        entraxe_courant_mm=entraxe,
+                    )
+                )
         conformes = [c for c in candidats if c.conforme]
         if conformes:
             if hypotheses.largeur_isolant_mm:
                 compatibles = [c for c in conformes if c.isolant_compatible]
                 if compatibles:
-                    choix = min(compatibles, key=lambda c: (c.cout_eur, c.entraxe_mm))
+                    choix = min(
+                        compatibles,
+                        key=lambda c: (
+                            c.cout_eur,
+                            abs((c.compression_isolant_mm or 0) - 10),
+                            len(c.entraxes_rive_mm),
+                            c.taux_dimensionnant,
+                        ),
+                    )
                 else:
                     choix = min(
                         conformes,
                         key=lambda c: (
-                            abs((c.compression_isolant_mm or 0) - 10),
                             c.cout_eur,
+                            abs((c.compression_isolant_mm or 0) - 10),
+                            c.taux_dimensionnant,
                         ),
                     )
                 configurations.append(choix)

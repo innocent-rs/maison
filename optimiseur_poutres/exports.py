@@ -99,7 +99,14 @@ def pdf_rapport(
                 "",
                 f"Choix : STEICOjoist {solives.section.nom}",
                 f"Portée : {solives.portee_m:.3f} m entre poutres principales",
-                f"Trame : {solives.nombre_lignes_solives} lignes à {solives.entraxe_mm:.0f} mm",
+                f"Trame : {solives.nombre_lignes_solives} lignes · entraxe courant {solives.entraxe_mm:.0f} mm",
+                (
+                    f"Rives ajustées : {len(solives.entraxes_rive_mm)} à "
+                    + " / ".join(f"{valeur:.0f}" for valeur in solives.entraxes_rive_mm)
+                    + " mm"
+                    if solives.entraxes_rive_mm
+                    else "Rives : même module que la trame courante"
+                ),
                 f"Vide entre membrures : {solives.largeur_vide_isolant_mm:.0f} mm"
                 + (
                     f" · serrage isolant {solives.compression_isolant_mm:.0f} mm"
@@ -122,6 +129,7 @@ def pdf_rapport(
                 "LIMITES V2",
                 "Les segments de solive sont simplement appuyés entre poutres principales.",
                 "Les sabots sont comptés mais leur référence, fixation et résistance ne sont pas vérifiées.",
+                "Une solive plus haute que son porteur sort du détail EWH standard retenu et exige un détail justifié.",
                 "Panneaux, entretoises, anti-dévers, renforts d'âme et charges localisées hors calcul.",
             ]
             axe_solives.text(

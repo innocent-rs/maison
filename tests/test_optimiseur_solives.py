@@ -125,6 +125,82 @@ class TestOptimiseurSolives(unittest.TestCase):
         self.assertEqual(resultat.meilleure.compression_isolant_mm, 35)
         self.assertFalse(resultat.meilleure.isolant_compatible)
 
+    def test_module_isolant_est_conserve_et_reliquat_reporte_en_rive(self) -> None:
+        projet = HypothesesProjet(
+            longueur_m=6,
+            largeur_m=10,
+            orientation="longueur",
+        )
+        support = optimiser(projet).meilleure
+        self.assertIsNotNone(support)
+
+        resultat = optimiser_solives(
+            projet,
+            HypothesesSolives(largeur_isolant_mm=575, entraxe_max_mm=625),
+            support,
+        )
+        meilleure = resultat.meilleure
+
+        self.assertIsNotNone(meilleure)
+        self.assertEqual(meilleure.nombre_lignes_solives, 11)
+        self.assertEqual(meilleure.entraxe_mm, 625)
+        self.assertEqual(meilleure.nombre_travees_modulaires, 9)
+        self.assertEqual(meilleure.entraxes_rive_mm, (375,))
+        self.assertEqual(meilleure.axes_mm[-1], 6_000)
+        self.assertTrue(meilleure.isolant_compatible)
+        self.assertFalse(meilleure.isolant_sans_recoupe)
+
+    def test_isolant_600_utilise_le_module_650_si_autorise(self) -> None:
+        resultat = optimiser_solives(
+            self.projet,
+            HypothesesSolives(largeur_isolant_mm=600, entraxe_max_mm=650),
+            self.support,
+        )
+        meilleure = resultat.meilleure
+
+        self.assertIsNotNone(meilleure)
+        self.assertEqual(meilleure.entraxe_mm, 650)
+        self.assertEqual(meilleure.compression_isolant_mm, 10)
+        self.assertEqual(meilleure.nombre_travees_modulaires, 15)
+        self.assertEqual(meilleure.entraxes_rive_mm, (250,))
+        self.assertTrue(meilleure.isolant_compatible)
+
+    def test_reliquat_trop_etroit_est_partage_entre_deux_rives(self) -> None:
+        projet = HypothesesProjet(
+            longueur_m=10.02,
+            largeur_m=10,
+            orientation="longueur",
+        )
+        support = optimiser(projet).meilleure
+        self.assertIsNotNone(support)
+
+        meilleure = optimiser_solives(
+            projet,
+            HypothesesSolives(largeur_isolant_mm=575, entraxe_max_mm=625),
+            support,
+        ).meilleure
+
+        self.assertIsNotNone(meilleure)
+        self.assertEqual(meilleure.entraxes_rive_mm, (322.5, 322.5))
+        self.assertEqual(meilleure.nombre_travees_modulaires, 15)
+        intervalles = tuple(
+            droite - gauche
+            for gauche, droite in zip(meilleure.axes_mm, meilleure.axes_mm[1:])
+        )
+        self.assertEqual(max(intervalles), meilleure.entraxe_mm)
+
+    def test_depassement_ne_valide_pas_un_assemblage_standard(self) -> None:
+        resultat = optimiser_solives(
+            self.projet,
+            self.hypotheses,
+            self.support,
+            [SOLIVES_FOURNISSEUR[1]],
+        )
+
+        self.assertIsNotNone(resultat.meilleure)
+        self.assertGreater(resultat.meilleure.depassement_sous_principale_mm, 0)
+        self.assertFalse(resultat.meilleure.assemblage_standard_compatible)
+
     def test_poids_des_solives_est_reinjecte_dans_les_principales(self) -> None:
         systeme = optimiser_systeme_porteur(self.projet, self.hypotheses)
 
