@@ -11,7 +11,7 @@ Ce document concerne uniquement l'outil autonome `optimiseur_poutres`. Ne pas
 Application Flask locale de pré-dimensionnement et de comparaison économique
 d'un système porteur rectangulaire composé de :
 
-- poutres principales C24 sur pieux vissés ;
+- poutres principales C24 ou GL24H sur pieux vissés ;
 - solives STEICOjoist perpendiculaires, découpées entre les principales et
   suspendues par sabots ;
 - exports CSV des pieux et PDF du résultat.
@@ -26,7 +26,7 @@ Puis ouvrir <http://127.0.0.1:5051>.
 
 ## Fichiers à connaître
 
-- `calcul.py` : hypothèses projet, sections C24, calcul et optimisation des
+- `calcul.py` : hypothèses projet, sections C24/GL24H, calcul et optimisation des
   poutres principales et des pieux.
 - `solives.py` : catalogue STEICOjoist, calcul des solives, calepinage de
   l'isolant et couplage du poids propre avec les principales.
@@ -42,6 +42,14 @@ Puis ouvrir <http://127.0.0.1:5051>.
 
 ### Poutres principales
 
+- Le catalogue compare le `120 × 240 mm` C24 avec les lamellés-collés GL24H
+  `140 × 320 mm` et `140 × 360 mm`. Les géométries et classes sont verrouillées ;
+  seuls les prix et longueurs commerciales restent éditables.
+- La longueur commerciale doit couvrir le plus grand côté du plancher, pièces
+  de rive comprises, quelle que soit l'orientation des principales. Un côté de
+  `13,50 m` exclut donc toujours le C24 limité à `13 m`.
+- Les GL24H utilisent leurs propriétés mécaniques de classe et la densité
+  fournisseur de `450 kg/m³`, indépendamment des propriétés C24 éditables.
 - Deux orientations peuvent être explorées.
 - Une poutre est présente sur chacune des deux rives.
 - Les rangées de pieux divisent les poutres en travées égales, calculées comme
@@ -129,6 +137,21 @@ cas inverse :
 
 ## État à la fin de cette session
 
+- Les anciennes sections principales 140 × 140, 100 × 200, 160 × 160 et
+  200 × 200 ont été retirées du catalogue actif. Les GL24H `140 × 320` et
+  `140 × 360` ont été ajoutées depuis la fiche fournisseur. L'ajout libre, la
+  suppression et la modification de géométrie restent absents de l'interface.
+- Le moteur principal utilise des évaluations légères sans liste de pieux,
+  une dichotomie sur le nombre de poutres et des bornes de coût. Le détail des
+  pieux n'est créé que pour les résultats affichés ou exportés.
+- Le choix économique compare maintenant le total poutres + pieux + solives +
+  sabots, puis réinjecte la masse des solives jusqu'à stabilisation. Il ne
+  choisit plus d'abord les principales indépendamment du second étage.
+- Les rectangles 24 × 12 m et 30 × 20 m n'ont plus de solution dans ce catalogue
+  tant qu'un aboutage sur appui n'est pas explicitement modélisé.
+- Mesure locale du calcul des principales 30 × 20 m : environ 0,009 s après
+  refonte contre 13,9 s avant refonte. Le système complet prend environ 0,24 s
+  sur cette machine.
 - Le calepinage modulaire 575/600 mm fonctionne sur les longueurs exactes et
   non multiples.
 - Une ou deux rives ajustées sont calculées, affichées et dessinées à leur axe
@@ -137,9 +160,9 @@ cas inverse :
 - Le tableau comparatif indique la compatibilité de l'isolant.
 - Le PDF reprend l'entraxe courant, les rives ajustées et l'avertissement sur
   les solives plus hautes.
-- L'alerte de hauteur ne rend pas encore automatiquement la combinaison
-  principale/solive non conforme : elle signale une vérification d'assemblage
-  indispensable.
+- Une combinaison dont la solive dépasse sous la principale reste calculable et
+  accompagnée d'une alerte, mais le choix global préfère désormais une combinaison
+  compatible en hauteur lorsqu'il en existe une dans les catalogues actifs.
 
 ## Vérifications
 
@@ -149,7 +172,8 @@ Tests ciblés :
 python -m unittest tests.test_optimiseur_solives tests.test_optimiseur_poutres
 ```
 
-État constaté : `39` tests réussis.
+État constaté après la correction des longueurs : `50` tests réussis, dont un budget
+déterministe inférieur à 1 000 évaluations pour les principales 30 × 20 m.
 
 Suite complète :
 
@@ -157,7 +181,7 @@ Suite complète :
 python -m unittest discover -s tests
 ```
 
-État constaté : `209` tests réussis. Dans le bac à sable, l'initialisation
+État constaté : `220` tests réussis. Dans le bac à sable, l'initialisation
 FreeCAD/MPI peut nécessiter l'autorisation d'ouvrir un socket local ; les tests
 ciblés de l'optimiseur n'ont pas ce besoin.
 
@@ -173,6 +197,10 @@ travail soit encore dans le même état.
   solives.
 - Le panneau de plancher, son diaphragme, son éventuel effet composite et
   l'amortissement ne sont pas modélisés.
-- L'optimisation ne recherche pas encore conjointement une autre poutre
-  principale uniquement pour éliminer un dépassement de hauteur de solive.
+- Le dépassement de hauteur reste un avertissement, mais il est prioritaire sur
+  le coût dans le choix global dès qu'une principale assez haute est disponible.
+- Le dimensionnement mécanique reste une recherche discrète analytique. Ne pas
+  le convertir directement en MILP : les portées et flèches sont non linéaires.
+  Réserver un éventuel MILP à la future optimisation de commande/débit des
+  longueurs commerciales.
 - L'outil reste un pré-dimensionnement et ne remplace pas une note de calcul.

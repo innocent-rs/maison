@@ -1,8 +1,11 @@
 import unittest
+from unittest.mock import patch
 
+import optimiseur_poutres.calcul as calcul
 from optimiseur_poutres.calcul import (
     CatalogueSection,
     HypothesesProjet,
+    SECTIONS_FOURNISSEUR,
     evaluer_configuration,
     optimiser,
 )
@@ -12,6 +15,83 @@ from optimiseur_poutres.webapp import create_app
 class TestCalculOptimiseurPoutres(unittest.TestCase):
     def setUp(self) -> None:
         self.section = CatalogueSection("100 × 200", 100, 200, 30, 13)
+
+    def test_catalogue_principal_contient_c24_et_gl24h(self) -> None:
+        self.assertEqual(
+            [(s.nom, s.classe_resistance) for s in SECTIONS_FOURNISSEUR],
+            [
+                ("120 × 240", "C24"),
+                ("140 × 320", "GL24H"),
+                ("140 × 360", "GL24H"),
+            ],
+        )
+        self.assertEqual(SECTIONS_FOURNISSEUR[1].prix_eur_m, 68.80)
+        self.assertEqual(SECTIONS_FOURNISSEUR[2].prix_eur_m, 77.40)
+        self.assertEqual(SECTIONS_FOURNISSEUR[1].longueur_max_m, 13.5)
+
+    def test_gl24h_utilise_ses_proprietes_de_catalogue(self) -> None:
+        section = SECTIONS_FOURNISSEUR[1]
+        resultat = evaluer_configuration(
+            HypothesesProjet(
+                longueur_m=6,
+                largeur_m=4,
+                e_moyen_mpa=1_000,
+                fm_k_mpa=10,
+            ),
+            section,
+            "longueur",
+            nombre_poutres=3,
+            nombre_travees=2,
+        )
+
+        self.assertEqual(section.e_moyen_mpa, 11_500)
+        self.assertAlmostEqual(resultat.resistance_flexion_mpa, 0.8 * 24 / 1.3)
+        self.assertAlmostEqual(resultat.masse_poutres_kg, 3 * 6 * 0.14 * 0.32 * 450)
+
+    def test_longueur_commerciale_porte_sur_la_ligne_complete(self) -> None:
+        projet = HypothesesProjet(longueur_m=13.5, largeur_m=6)
+        c24 = evaluer_configuration(
+            projet,
+            SECTIONS_FOURNISSEUR[0],
+            "longueur",
+            nombre_poutres=4,
+            nombre_travees=5,
+        )
+        gl24h = evaluer_configuration(
+            projet,
+            SECTIONS_FOURNISSEUR[1],
+            "longueur",
+            nombre_poutres=4,
+            nombre_travees=5,
+        )
+
+        self.assertIn(
+            "dimension du plancher supérieure à la longueur commerciale",
+            c24.contraintes,
+        )
+        self.assertNotIn(
+            "dimension du plancher supérieure à la longueur commerciale",
+            gl24h.contraintes,
+        )
+
+    def test_optimisation_13m50_exclut_le_c24_dans_les_deux_sens(self) -> None:
+        resultat = optimiser(
+            HypothesesProjet(
+                longueur_m=13.5,
+                largeur_m=6,
+                orientation="auto",
+            )
+        )
+
+        self.assertIsNotNone(resultat.meilleure)
+        self.assertEqual(resultat.meilleure.section.classe_resistance, "GL24H")
+        self.assertTrue(
+            all(
+                not configuration.conforme
+                for configuration in resultat.configurations
+                if configuration.section.nom == "120 × 240"
+            )
+        )
 
     def test_entraxe_et_cout(self) -> None:
         resultat = evaluer_configuration(
@@ -62,6 +142,17 @@ class TestCalculOptimiseurPoutres(unittest.TestCase):
         self.assertTrue(resultat.meilleure.conforme)
         couts = [c.cout_eur for c in resultat.configurations if c.conforme]
         self.assertEqual(resultat.meilleure.cout_eur, min(couts))
+
+    def test_cas_hors_longueurs_commerciales_est_ecarte_rapidement(self) -> None:
+        with patch.object(
+            calcul,
+            "evaluer_configuration",
+            wraps=calcul.evaluer_configuration,
+        ) as evaluation:
+            resultat = optimiser(HypothesesProjet(longueur_m=30, largeur_m=20))
+
+        self.assertIsNone(resultat.meilleure)
+        self.assertLess(evaluation.call_count, 1_000)
 
     def test_carre_10x10_n_invente_pas_des_poutres_tous_les_42_mm(self) -> None:
         resultat = optimiser(HypothesesProjet(longueur_m=10, largeur_m=10))
@@ -165,6 +256,19 @@ class TestCalculOptimiseurPoutres(unittest.TestCase):
             {(0.0, 0.0), (10.0, 0.0), (0.0, 10.0), (10.0, 10.0)},
         )
 
+    def test_evaluation_legere_ne_materialise_pas_les_pieux(self) -> None:
+        resultat = evaluer_configuration(
+            HypothesesProjet(longueur_m=10, largeur_m=10),
+            self.section,
+            "longueur",
+            nombre_poutres=4,
+            nombre_travees=4,
+            generer_pieux=False,
+        )
+
+        self.assertGreater(resultat.nombre_pieux_total, 0)
+        self.assertEqual(resultat.pieux, ())
+
     def test_reactions_individuelles_distinguent_rive_et_interieur(self) -> None:
         resultat = evaluer_configuration(
             HypothesesProjet(longueur_m=10, largeur_m=10),
@@ -263,12 +367,8 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
             "profil_usage": "maison",
             "profil_fleche": "maison",
             "inclure_poids_propre": "on",
-            "section_active": "0",
-            "section_nom": "100 × 200",
-            "section_largeur": "100",
-            "section_hauteur": "200",
-            "section_prix": "29,02",
-            "section_longueur_max": "13",
+            "section_prix": ["40,01", "68,80", "77,40"],
+            "section_longueur_max": ["13", "13,5", "13,5"],
             "entraxe_solives_max_mm": "625",
             "classe_service_solives": "2",
             "limite_fleche_solives_diviseur": "350",
@@ -282,10 +382,10 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
     def test_page_initiale_presente_une_optimisation(self) -> None:
         reponse = self.client.get("/")
         self.assertEqual(reponse.status_code, 200)
-        self.assertIn("CHOIX LE MOINS CHER CONFORME", reponse.text)
+        self.assertIn("CHOIX ÉCONOMIQUE DU SYSTÈME COMPLET", reponse.text)
         self.assertIn("Flèche finale", reponse.text)
         self.assertIn("Solives en I", reponse.text)
-        self.assertIn("CHOIX DE SOLIVES LE MOINS CHER CONFORME", reponse.text)
+        self.assertIn("SOLIVES DU SYSTÈME COMPLET RETENU", reponse.text)
         self.assertIn("Plan à l’échelle", reponse.text)
         meilleure = optimiser(HypothesesProjet()).meilleure
         self.assertIsNotNone(meilleure)
@@ -304,8 +404,28 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
     def test_formulaire_complet_accepte_les_decimales_francaises(self) -> None:
         reponse = self.client.post("/", data=self._formulaire_valide())
         self.assertEqual(reponse.status_code, 200)
-        self.assertIn("CHOIX LE MOINS CHER CONFORME", reponse.text)
+        self.assertIn("CHOIX ÉCONOMIQUE DU SYSTÈME COMPLET", reponse.text)
         self.assertNotIn('name="nombre_lignes_appui_max"', reponse.text)
+
+    def test_catalogue_principal_refuse_une_section_injectee(self) -> None:
+        data = self._formulaire_valide()
+        data.update(
+            {
+                "section_nom": "section injectée",
+                "section_largeur": "10",
+                "section_hauteur": "10",
+            }
+        )
+
+        reponse = self.client.post("/", data=data)
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIn("Catalogue des poutres principales", reponse.text)
+        self.assertIn("120 × 240 mm", reponse.text)
+        self.assertIn("140 × 320", reponse.text)
+        self.assertIn("140 × 360", reponse.text)
+        self.assertNotIn("section injectée", reponse.text)
+        self.assertNotIn('name="section_largeur"', reponse.text)
 
     def test_bouton_solives_rouvre_le_bon_onglet(self) -> None:
         data = self._formulaire_valide()
@@ -326,16 +446,16 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
         self.assertEqual(reponse.status_code, 200)
         self.assertIn("0 sabots estimés", reponse.text)
 
-    def test_solive_plus_haute_affiche_le_depassement_et_le_sabot(self) -> None:
+    def test_solive_300_fait_choisir_un_support_compatible(self) -> None:
         data = self._formulaire_valide()
         data["solive_active"] = ["1"]
         data["onglet_actif"] = "solives"
         reponse = self.client.post("/", data=data)
 
         self.assertEqual(reponse.status_code, 200)
-        self.assertIn("Solive plus haute : assemblage hors détail EWH standard", reponse.text)
-        self.assertIn("EWH 300/61", reponse.text)
-        self.assertIn("L’optimiseur ne valide donc pas", reponse.text)
+        self.assertIn("4 poutres 140 × 320", reponse.text)
+        self.assertIn("SJ60/300", reponse.text)
+        self.assertNotIn("Solive plus haute : assemblage hors détail EWH standard", reponse.text)
 
     def test_longueur_non_modulaire_conserve_l_entraxe_isolant(self) -> None:
         data = self._formulaire_valide()

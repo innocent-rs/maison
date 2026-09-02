@@ -69,7 +69,7 @@ def pdf_rapport(
             f"Usage : {hypotheses.profil_usage} · confort : {hypotheses.profil_fleche} (L/{hypotheses.limite_fleche_diviseur:.0f})",
             f"Charges : G {hypotheses.masse_permanente_kg_m2:.1f} kg/m² · Q {hypotheses.masse_exploitation_kg_m2:.1f} kg/m²",
             "",
-            f"Choix : {configuration.section.nom} mm · {configuration.nombre_poutres} poutres",
+            f"Choix : {configuration.section.nom} mm {configuration.section.classe_resistance} · {configuration.nombre_poutres} poutres",
             f"Travées : {configuration.nombre_travees} × {configuration.portee_m:.2f} m · entraxe {configuration.entraxe_m:.3f} m",
             f"Pieux : {configuration.nombre_pieux_total} dont {configuration.nombre_pieux_rive} aux rives",
             f"Coût : {configuration.cout_bois_eur:.0f} € bois + {configuration.cout_appuis_eur:.0f} € pieux = {configuration.cout_eur:.0f} €",

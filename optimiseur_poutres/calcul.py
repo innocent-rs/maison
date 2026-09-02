@@ -56,6 +56,13 @@ class CatalogueSection:
     hauteur_mm: float
     prix_eur_m: float
     longueur_max_m: float = 13.0
+    classe_resistance: str = "C24"
+    e_moyen_mpa: float | None = None
+    g_moyen_mpa: float | None = None
+    fm_k_mpa: float | None = None
+    fv_k_mpa: float | None = None
+    fc90_k_mpa: float | None = None
+    masse_volumique_kg_m3: float | None = None
 
     def __post_init__(self) -> None:
         valeurs = (
@@ -64,10 +71,26 @@ class CatalogueSection:
             self.prix_eur_m,
             self.longueur_max_m,
         )
-        if not self.nom.strip():
+        proprietes_optionnelles = (
+            self.e_moyen_mpa,
+            self.g_moyen_mpa,
+            self.fm_k_mpa,
+            self.fv_k_mpa,
+            self.fc90_k_mpa,
+            self.masse_volumique_kg_m3,
+        )
+        if not self.nom.strip() or not self.classe_resistance.strip():
             raise ValueError("chaque section doit avoir un nom")
         if not all(isfinite(v) for v in valeurs) or min(valeurs) <= 0:
             raise ValueError(f"les valeurs de la section {self.nom} doivent être positives")
+        if any(
+            valeur is not None
+            and (not isfinite(valeur) or valeur <= 0)
+            for valeur in proprietes_optionnelles
+        ):
+            raise ValueError(
+                f"les propriétés du matériau {self.classe_resistance} doivent être positives"
+            )
 
     @property
     def aire_mm2(self) -> float:
@@ -82,12 +105,42 @@ class CatalogueSection:
         return self.largeur_mm * self.hauteur_mm**2 / 6
 
 
+SECTION_PRINCIPALE = CatalogueSection("120 × 240", 120, 240, 40.01, 13)
+
+# Catalogue Matériaux Naturels relevé le 2 septembre 2026. Les propriétés du
+# GL24H suivent l'EN 14080 ; la densité de 450 kg/m³ est celle déclarée sur la
+# fiche du produit vendu. Les propriétés laissées à None sur le C24 restent
+# pilotées par les hypothèses avancées du projet.
 SECTIONS_FOURNISSEUR = (
-    CatalogueSection("140 × 140", 140, 140, 26.64, 13),
-    CatalogueSection("100 × 200", 100, 200, 29.02, 13),
-    CatalogueSection("160 × 160", 160, 160, 32.45, 12),
-    CatalogueSection("120 × 240", 120, 240, 40.01, 13),
-    CatalogueSection("200 × 200", 200, 200, 55.98, 13),
+    SECTION_PRINCIPALE,
+    CatalogueSection(
+        "140 × 320",
+        140,
+        320,
+        68.80,
+        13.5,
+        classe_resistance="GL24H",
+        e_moyen_mpa=11_500,
+        g_moyen_mpa=650,
+        fm_k_mpa=24,
+        fv_k_mpa=3.5,
+        fc90_k_mpa=2.5,
+        masse_volumique_kg_m3=450,
+    ),
+    CatalogueSection(
+        "140 × 360",
+        140,
+        360,
+        77.40,
+        13.5,
+        classe_resistance="GL24H",
+        e_moyen_mpa=11_500,
+        g_moyen_mpa=650,
+        fm_k_mpa=24,
+        fv_k_mpa=3.5,
+        fc90_k_mpa=2.5,
+        masse_volumique_kg_m3=450,
+    ),
 )
 
 
@@ -279,6 +332,10 @@ class ResultatOptimisation:
     moins_de_pieux: ResultatConfiguration | None
     meilleure_marge: ResultatConfiguration | None
     alternatives: tuple[ResultatConfiguration, ...]
+    # Configurations conformes légères (sans le détail des pieux), destinées
+    # aux optimisations couplées. Les vues continuent d'utiliser les champs
+    # ci-dessus, entièrement matérialisés.
+    candidats_conformes: tuple[ResultatConfiguration, ...] = ()
 
 
 def _fleche_uniforme_mm(
@@ -288,11 +345,13 @@ def _fleche_uniforme_mm(
     hypotheses: HypothesesProjet,
 ) -> float:
     # 1 kN/m = 1 N/mm. Flexion d'Euler-Bernoulli + cisaillement de Timoshenko.
+    e_moyen_mpa = section.e_moyen_mpa or hypotheses.e_moyen_mpa
+    g_moyen_mpa = section.g_moyen_mpa or hypotheses.g_moyen_mpa
     flexion = (
         5
         * charge_kN_m
         * portee_mm**4
-        / (384 * hypotheses.e_moyen_mpa * section.inertie_mm4)
+        / (384 * e_moyen_mpa * section.inertie_mm4)
     )
     cisaillement = (
         charge_kN_m
@@ -300,7 +359,7 @@ def _fleche_uniforme_mm(
         / (
             8
             * hypotheses.coefficient_cisaillement
-            * hypotheses.g_moyen_mpa
+            * g_moyen_mpa
             * section.aire_mm2
         )
     )
@@ -314,10 +373,12 @@ def _fleche_ponctuelle_centrale_mm(
     hypotheses: HypothesesProjet,
 ) -> float:
     charge_n = charge_kN * 1_000
+    e_moyen_mpa = section.e_moyen_mpa or hypotheses.e_moyen_mpa
+    g_moyen_mpa = section.g_moyen_mpa or hypotheses.g_moyen_mpa
     flexion = (
         charge_n
         * portee_mm**3
-        / (48 * hypotheses.e_moyen_mpa * section.inertie_mm4)
+        / (48 * e_moyen_mpa * section.inertie_mm4)
     )
     cisaillement = (
         charge_n
@@ -325,7 +386,7 @@ def _fleche_ponctuelle_centrale_mm(
         / (
             4
             * hypotheses.coefficient_cisaillement
-            * hypotheses.g_moyen_mpa
+            * g_moyen_mpa
             * section.aire_mm2
         )
     )
@@ -338,6 +399,8 @@ def evaluer_configuration(
     orientation: Orientation,
     nombre_poutres: int,
     nombre_travees: int = 1,
+    *,
+    generer_pieux: bool = True,
 ) -> ResultatConfiguration:
     if nombre_poutres < 2:
         raise ValueError("il faut au moins deux poutres principales, une sur chaque rive")
@@ -353,11 +416,15 @@ def evaluer_configuration(
     portee_m = portee_totale_m / nombre_travees
 
     entraxe_m = largeur_repartie_m / (nombre_poutres - 1)
+    e_moyen_mpa = section.e_moyen_mpa or hypotheses.e_moyen_mpa
+    masse_volumique_kg_m3 = (
+        section.masse_volumique_kg_m3 or hypotheses.masse_volumique_kg_m3
+    )
     poids_propre_kN_m = 0.0
     if hypotheses.inclure_poids_propre:
         poids_propre_kN_m = (
             section.aire_mm2 / 1_000_000
-            * hypotheses.masse_volumique_kg_m3
+            * masse_volumique_kg_m3
             * 9.81
             / 1_000
         )
@@ -385,8 +452,11 @@ def evaluer_configuration(
     effort_tranchant_n = charge_elu * portee_mm / 2
     contrainte_flexion = moment_n_mm / section.module_section_mm3
     contrainte_cisaillement = 1.5 * effort_tranchant_n / section.aire_mm2
-    resistance_flexion = hypotheses.kmod * hypotheses.fm_k_mpa / hypotheses.gamma_m
-    resistance_cisaillement = hypotheses.kmod * hypotheses.fv_k_mpa / hypotheses.gamma_m
+    fm_k_mpa = section.fm_k_mpa or hypotheses.fm_k_mpa
+    fv_k_mpa = section.fv_k_mpa or hypotheses.fv_k_mpa
+    fc90_k_mpa = section.fc90_k_mpa or hypotheses.fc90_k_mpa
+    resistance_flexion = hypotheses.kmod * fm_k_mpa / hypotheses.gamma_m
+    resistance_cisaillement = hypotheses.kmod * fv_k_mpa / hypotheses.gamma_m
     taux_flexion = contrainte_flexion / resistance_flexion
     taux_cisaillement = contrainte_cisaillement / resistance_cisaillement
     nombre_lignes_appui_intermediaires = nombre_travees - 1
@@ -410,7 +480,7 @@ def evaluer_configuration(
     resistance_compression_appui = (
         hypotheses.kc90
         * hypotheses.kmod
-        * hypotheses.fc90_k_mpa
+        * fc90_k_mpa
         / hypotheses.gamma_m
     )
     taux_compression_appui = (
@@ -427,9 +497,9 @@ def evaluer_configuration(
             + hypotheses.psi2 * masse_q_kg_m2
         )
         * largeur_tributaire_m
-        + section.aire_mm2 / 1_000_000 * hypotheses.masse_volumique_kg_m3
+        + section.aire_mm2 / 1_000_000 * masse_volumique_kg_m3
     )
-    ei_n_m2 = hypotheses.e_moyen_mpa * section.inertie_mm4 * 1e-6
+    ei_n_m2 = e_moyen_mpa * section.inertie_mm4 * 1e-6
     frequence_propre = (
         pi / (2 * portee_m**2) * sqrt(ei_n_m2 / masse_lineique_kg_m)
     )
@@ -451,37 +521,57 @@ def evaluer_configuration(
         vibration_respectee = taux_vibration <= 1
 
     pieux: list[ResultatPieu] = []
-    index_pieu = 1
-    for rangee in range(nombre_travees + 1):
-        facteur_reaction = 0.5 if rangee in (0, nombre_travees) else 1.0
-        for colonne in range(nombre_poutres):
-            largeur_pieu = entraxe_m / 2 if colonne in (0, nombre_poutres - 1) else entraxe_m
-            qg_pieu = hypotheses.charge_g_surfacique_kN_m2 * largeur_pieu + poids_propre_kN_m
-            qq_pieu = hypotheses.charge_q_surfacique_kN_m2 * largeur_pieu
-            reaction_els = facteur_reaction * (qg_pieu + qq_pieu) * portee_m
-            reaction_elu = facteur_reaction * (1.35 * qg_pieu + 1.5 * qq_pieu) * portee_m
-            angle = rangee in (0, nombre_travees) and colonne in (0, nombre_poutres - 1)
-            type_appui: Literal["angle", "rive", "intermediaire"] = (
-                "angle" if angle else "rive" if rangee in (0, nombre_travees) else "intermediaire"
-            )
-            pieux.append(
-                ResultatPieu(
-                    identifiant=f"P{index_pieu:02d}",
-                    colonne=colonne,
-                    rangee=rangee,
-                    x_m=colonne * entraxe_m,
-                    y_m=rangee * portee_m,
-                    type_appui=type_appui,
-                    reaction_els_kN=reaction_els,
-                    reaction_elu_kN=reaction_elu,
-                    taux_capacite=reaction_elu / capacite_appui_kN,
+    if generer_pieux:
+        index_pieu = 1
+        for rangee in range(nombre_travees + 1):
+            facteur_reaction = 0.5 if rangee in (0, nombre_travees) else 1.0
+            for colonne in range(nombre_poutres):
+                largeur_pieu = (
+                    entraxe_m / 2
+                    if colonne in (0, nombre_poutres - 1)
+                    else entraxe_m
                 )
-            )
-            index_pieu += 1
+                qg_pieu = (
+                    hypotheses.charge_g_surfacique_kN_m2 * largeur_pieu
+                    + poids_propre_kN_m
+                )
+                qq_pieu = hypotheses.charge_q_surfacique_kN_m2 * largeur_pieu
+                reaction_els = facteur_reaction * (qg_pieu + qq_pieu) * portee_m
+                reaction_elu = (
+                    facteur_reaction
+                    * (1.35 * qg_pieu + 1.5 * qq_pieu)
+                    * portee_m
+                )
+                angle = (
+                    rangee in (0, nombre_travees)
+                    and colonne in (0, nombre_poutres - 1)
+                )
+                type_appui: Literal["angle", "rive", "intermediaire"] = (
+                    "angle"
+                    if angle
+                    else "rive"
+                    if rangee in (0, nombre_travees)
+                    else "intermediaire"
+                )
+                pieux.append(
+                    ResultatPieu(
+                        identifiant=f"P{index_pieu:02d}",
+                        colonne=colonne,
+                        rangee=rangee,
+                        x_m=colonne * entraxe_m,
+                        y_m=rangee * portee_m,
+                        type_appui=type_appui,
+                        reaction_els_kN=reaction_els,
+                        reaction_elu_kN=reaction_elu,
+                        taux_capacite=reaction_elu / capacite_appui_kN,
+                    )
+                )
+                index_pieu += 1
 
     contraintes: list[str] = []
-    if portee_m > section.longueur_max_m:
-        contraintes.append("portée supérieure à la longueur commerciale")
+    longueur_requise_m = max(hypotheses.longueur_m, hypotheses.largeur_m)
+    if longueur_requise_m > section.longueur_max_m + 1e-12:
+        contraintes.append("dimension du plancher supérieure à la longueur commerciale")
     if hypotheses.entraxe_max_m and entraxe_m > hypotheses.entraxe_max_m + 1e-12:
         contraintes.append("portée secondaire maximale dépassée")
     if entraxe_m + 1e-12 < section.largeur_mm / 1_000:
@@ -502,7 +592,7 @@ def evaluer_configuration(
         longueur_totale
         * section.aire_mm2
         / 1_000_000
-        * hypotheses.masse_volumique_kg_m3
+        * masse_volumique_kg_m3
     )
     nombre_pieux_intermediaires = (
         nombre_poutres * nombre_lignes_appui_intermediaires
@@ -590,6 +680,8 @@ def _maximum_sans_chevauchement(
 def optimiser(
     hypotheses: HypothesesProjet,
     sections: tuple[CatalogueSection, ...] | list[CatalogueSection] = SECTIONS_FOURNISSEUR,
+    *,
+    exploration_systeme: bool = False,
 ) -> ResultatOptimisation:
     if not sections:
         raise ValueError("sélectionnez au moins une section")
@@ -608,8 +700,27 @@ def optimiser(
             maximum_physique = _maximum_sans_chevauchement(
                 hypotheses, section, orientation
             )
+            longueur_requise_m = max(
+                hypotheses.longueur_m,
+                hypotheses.largeur_m,
+            )
+            if longueur_requise_m > section.longueur_max_m + 1e-12:
+                # Le système constructif exige que la référence puisse couvrir
+                # le plus grand côté, y compris ses éléments de rive. Les appuis
+                # intermédiaires réduisent la portée mécanique mais ne rendent
+                # pas disponible une pièce commerciale plus longue.
+                configurations.append(
+                    evaluer_configuration(
+                        hypotheses,
+                        section,
+                        orientation,
+                        min(minimum, max(2, maximum_physique)),
+                        generer_pieux=False,
+                    )
+                )
+                continue
+            meilleur_cout = float("inf")
             for nombre_travees in range(1, MAX_TRAVEES_RECHERCHE + 1):
-                derniere: ResultatConfiguration | None = None
                 # Si la contrainte secondaire exige déjà des poutres qui se
                 # chevauchent, on garde la dernière trame physique pour le diagnostic.
                 debut = (
@@ -618,28 +729,60 @@ def optimiser(
                     else max(2, maximum_physique)
                 )
                 maximum_recherche = max(2, maximum_physique)
-                for nombre in range(debut, maximum_recherche + 1):
-                    derniere = evaluer_configuration(
-                        hypotheses,
-                        section,
-                        orientation,
-                        nombre,
-                        nombre_travees,
-                    )
-                    if derniere.conforme:
-                        candidates.append(derniere)
-                        # Cette section utilise désormais le nombre minimal de
-                        # poutres permis par la géométrie secondaire. Des travées
-                        # plus courtes ne réduiraient plus le bois, mais ajouteraient
-                        # nécessairement une rangée de pieux à 500 € par poutre.
-                        if nombre == minimum:
-                            break
-                        break
-                else:
-                    if derniere is not None:
-                        candidates.append(derniere)
 
-                if derniere is not None and derniere.conforme and derniere.nombre_poutres == minimum:
+                # Pour un nombre de travées fixé, le coût croît avec le nombre
+                # de poutres. Cette borne permet d'arrêter les travées dès
+                # qu'aucune suivante ne peut battre la meilleure trouvée.
+                cout_minimal = debut * (
+                    section.prix_eur_m
+                    * (
+                        hypotheses.longueur_m
+                        if orientation == "longueur"
+                        else hypotheses.largeur_m
+                    )
+                    + COUT_PIEU_VISSE_EUR * (nombre_travees + 1)
+                )
+                if (
+                    not exploration_systeme
+                    and cout_minimal > meilleur_cout + 1e-9
+                ):
+                    break
+
+                evaluations: dict[int, ResultatConfiguration] = {}
+
+                def evaluer_nombre(nombre: int) -> ResultatConfiguration:
+                    if nombre not in evaluations:
+                        evaluations[nombre] = evaluer_configuration(
+                            hypotheses,
+                            section,
+                            orientation,
+                            nombre,
+                            nombre_travees,
+                            generer_pieux=False,
+                        )
+                    return evaluations[nombre]
+
+                # Toutes les vérifications s'améliorent lorsque les poutres se
+                # rapprochent. Une dichotomie trouve donc la première trame
+                # conforme sans construire chaque nombre intermédiaire.
+                haute = evaluer_nombre(maximum_recherche)
+                if haute.conforme:
+                    basse_nombre = debut
+                    haute_nombre = maximum_recherche
+                    while basse_nombre < haute_nombre:
+                        milieu = (basse_nombre + haute_nombre) // 2
+                        if evaluer_nombre(milieu).conforme:
+                            haute_nombre = milieu
+                        else:
+                            basse_nombre = milieu + 1
+                    derniere = evaluer_nombre(basse_nombre)
+                else:
+                    derniere = haute
+
+                candidates.append(derniere)
+                if derniere.conforme:
+                    meilleur_cout = min(meilleur_cout, derniere.cout_eur)
+                if derniere.conforme and derniere.nombre_poutres == minimum:
                     break
                 # Le nombre de poutres demandé par la portée secondaire ne peut
                 # pas tenir dans le rectangle : les appuis longitudinaux n'y
@@ -701,11 +844,35 @@ def optimiser(
         if toutes_conformes
         else None
     )
+    details: dict[
+        tuple[CatalogueSection, Orientation, int, int], ResultatConfiguration
+    ] = {}
+
+    def avec_pieux(configuration: ResultatConfiguration | None) -> ResultatConfiguration | None:
+        if configuration is None:
+            return None
+        cle = (
+            configuration.section,
+            configuration.orientation,
+            configuration.nombre_poutres,
+            configuration.nombre_travees,
+        )
+        if cle not in details:
+            details[cle] = evaluer_configuration(
+                hypotheses,
+                configuration.section,
+                configuration.orientation,
+                configuration.nombre_poutres,
+                configuration.nombre_travees,
+            )
+        return details[cle]
+
     return ResultatOptimisation(
         hypotheses,
-        tuple(configurations),
-        meilleure,
-        moins_de_pieux,
-        meilleure_marge,
-        tuple(alternatives[:24]),
+        tuple(avec_pieux(c) for c in configurations),
+        avec_pieux(meilleure),
+        avec_pieux(moins_de_pieux),
+        avec_pieux(meilleure_marge),
+        tuple(avec_pieux(c) for c in alternatives[:24]),
+        tuple(alternatives),
     )

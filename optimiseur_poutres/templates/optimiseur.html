@@ -11,7 +11,7 @@
       <div>
         <p class="surtitre">PRÉ-DIMENSIONNEMENT · EUROCODE 5</p>
         <h1>Les poutres <em>principales</em>.</h1>
-        <p>Optimise les sections, le nombre de poutres et les travées entre appuis intermédiaires pour minimiser le coût global d’un rectangle.</p>
+        <p>Compare les poutres C24 et lamellé-collé GL24H, leur nombre et les travées entre appuis intermédiaires pour minimiser le coût global d’un rectangle.</p>
       </div>
       <div class="monogramme">EC<span>5</span></div>
     </header>
@@ -19,7 +19,7 @@
     <main data-onglet-initial="{{ onglet_actif }}">
       <nav class="onglets" aria-label="Étapes de dimensionnement">
         <button type="button" class="onglet-bouton" data-cible="principales"><span>01</span>Poutres principales</button>
-        <button type="button" class="onglet-bouton" data-cible="solives"><span>02</span>Solives en I <small>V2</small></button>
+        <button type="button" class="onglet-bouton" data-cible="solives"><span>02</span>Solives en I <small>V3</small></button>
       </nav>
       {% if erreur %}<div class="alerte"><strong>Entrée invalide.</strong> {{ erreur }}</div>{% endif %}
       <form method="post" id="formulaire">
@@ -83,31 +83,30 @@
               <label>Masse volumique <small>kg/m³</small><input name="masse_volumique_kg_m3" type="number" min="1" step="any" required value="{{ valeurs.get('masse_volumique_kg_m3', '') }}"></label>
             </div>
             <label class="case"><input name="inclure_poids_propre" type="checkbox" {% if valeurs.get('inclure_poids_propre') %}checked{% endif %}> Inclure le poids propre des poutres principales dans G</label>
+            <p class="source">Ces propriétés éditables s’appliquent au 120 × 240 C24. Les valeurs normalisées du GL24H et sa densité fournisseur sont verrouillées dans le catalogue.</p>
           </details>
         </section>
 
         <section class="panneau catalogue" data-onglet-contenu="principales">
-          <div class="titre"><span>02</span><div><h2>Catalogue de sections</h2><p>Dimensions et prix TTC/m modifiables</p></div></div>
+          <div class="titre"><span>02</span><div><h2>Catalogue des poutres principales</h2><p>Bois contrecollé C24 et lamellé-collé GL24H, comparés avec le système de solives</p></div></div>
           <div class="table-wrap">
-            <table id="catalogue-table">
-              <thead><tr><th>Tester</th><th>Nom</th><th>b (mm)</th><th>h (mm)</th><th>€/m</th><th>Long. max (m)</th><th></th></tr></thead>
+            <table>
+              <thead><tr><th>Référence</th><th>Classe</th><th>Section</th><th>Prix TTC/m</th><th>Longueur maximale d’une ligne</th></tr></thead>
               <tbody>
                 {% for section in catalogue %}
                 <tr>
-                  <td><input class="active" name="section_active" type="checkbox" value="{{ loop.index0 }}" {% if section.active %}checked{% endif %}></td>
-                  <td><input name="section_nom" required value="{{ section.nom }}"></td>
-                  <td><input name="section_largeur" type="number" min="1" step="any" required value="{{ section.largeur_mm }}"></td>
-                  <td><input name="section_hauteur" type="number" min="1" step="any" required value="{{ section.hauteur_mm }}"></td>
+                  <th>{{ section.nom }}</th>
+                  <td>{{ section.classe_resistance }}</td>
+                  <td>{{ section.largeur_mm|int }} × {{ section.hauteur_mm|int }} mm</td>
                   <td><input name="section_prix" type="number" min="0.01" step="any" required value="{{ section.prix_eur_m }}"></td>
-                  <td><input name="section_longueur_max" type="number" min="0.1" step="any" required value="{{ section.longueur_max_m }}"></td>
-                  <td><button class="supprimer" type="button" aria-label="Supprimer cette section">×</button></td>
+                  <td><input name="section_longueur_max" type="number" min="0.1" step="any" required value="{{ section.longueur_max_m }}"> m</td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-          <div class="actions"><button id="ajouter" class="secondaire" type="button">+ Ajouter une section</button><button class="calculer" type="submit" name="onglet_actif" value="principales">Optimiser les principales <span>→</span></button></div>
-          <p class="source">Catalogue initial : <a href="https://www.materiaux-naturels.fr/produit/1258-poutre-poteau-epicea-contrecolle-c24" target="_blank" rel="noreferrer">Matériaux Naturels</a>, relevé le 2 septembre 2026. Les tarifs, longueurs et propriétés doivent être confirmés avant commande.</p>
+          <div class="actions"><span>Sections et classes verrouillées ; tarifs et longueurs restent ajustables.</span><button class="calculer" type="submit" name="onglet_actif" value="principales">Optimiser la trame <span>→</span></button></div>
+          <p class="source">Références : <a href="https://www.materiaux-naturels.fr/produit/1258-poutre-poteau-epicea-contrecolle-c24" target="_blank" rel="noreferrer">120 × 240 C24</a> et <a href="https://www.materiaux-naturels.fr/produit/1136-poutre-lamelle-colle-en-epicea" target="_blank" rel="noreferrer">140 × 320 / 360 GL24H</a>, relevées le 2 septembre 2026. Disponibilité annoncée du GL24H à partir du 2 octobre 2026 ; tarifs et délais à confirmer avant commande.</p>
         </section>
 
         <section class="panneau catalogue-solives" data-onglet-contenu="solives">
@@ -161,11 +160,11 @@
       {% if resultat and resultat.meilleure %}
       {% set m = resultat.meilleure %}
       <section class="resultat-hero" data-onglet-contenu="principales">
-        <div class="rang"><span>CHOIX LE MOINS CHER CONFORME</span><strong>#1</strong></div>
+        <div class="rang"><span>CHOIX ÉCONOMIQUE DU SYSTÈME COMPLET</span><strong>#1</strong></div>
         <div class="hero-grid">
           <div class="prescription">
-            <p class="section-nom">{{ m.section.nom }} mm</p>
-            <h2>{{ m.nombre_poutres }} <span>lignes de poutres principales sur {{ '%.2f'|format(m.portee_totale_m) }} m</span></h2>
+            <p class="section-nom">{{ m.section.nom }} mm · {{ m.section.classe_resistance }}</p>
+            <h2>{{ m.nombre_poutres }} <span>lignes de poutres principales de {{ '%.2f'|format(m.portee_totale_m) }} m, sans aboutage</span></h2>
             <p>{{ m.nombre_travees }} travée{% if m.nombre_travees > 1 %}s{% endif %} de {{ '%.2f'|format(m.portee_m) }} m · {{ m.nombre_lignes_appui_intermediaires }} ligne{% if m.nombre_lignes_appui_intermediaires != 1 %}s{% endif %} d’appui intermédiaire · espacement des poutres {{ '%.0f'|format(m.entraxe_m * 1000) }} mm</p>
           </div>
           <div class="prix"><strong>{{ '%.0f'|format(m.cout_eur) }} €</strong><span>{{ '%.0f'|format(m.cout_bois_eur) }} € de bois + {{ '%.0f'|format(m.cout_appuis_eur) }} € de pieux · hors coupes et livraison</span></div>
@@ -243,7 +242,7 @@
         </details>
       </section>
       <section class="objectifs" data-onglet-contenu="principales">
-        {% for titre, choix in (('Moins cher', resultat.meilleure), ('Moins de pieux', resultat.moins_de_pieux), ('Meilleure marge', resultat.meilleure_marge)) %}
+        {% for titre, choix in (('Système retenu', resultat.meilleure), ('Moins de pieux', resultat.moins_de_pieux), ('Meilleure marge', resultat.meilleure_marge)) %}
         <article class="panneau {% if choix == resultat.meilleure %}actif{% endif %}">
           <span>{{ titre }}</span><h3>{{ choix.section.nom }}</h3>
           <p>{{ choix.nombre_poutres }} poutres · {{ choix.nombre_pieux_total }} pieux · {{ choix.nombre_travees }} travées</p>
@@ -264,7 +263,7 @@
       {% set s = resultat_solives.meilleure %}
       {% set support = resultat_solives.support %}
       <section class="resultat-hero resultat-solives" data-onglet-contenu="solives">
-        <div class="rang"><span>CHOIX DE SOLIVES LE MOINS CHER CONFORME</span><strong>V2</strong></div>
+        <div class="rang"><span>SOLIVES DU SYSTÈME COMPLET RETENU</span><strong>V3</strong></div>
         <div class="hero-grid">
           <div class="prescription"><p class="section-nom">STEICOjoist</p><h2>{{ s.section.nom }} <span>{{ s.nombre_lignes_solives }} lignes · entraxe courant {{ '%.0f'|format(s.entraxe_mm) }} mm</span></h2><p>{{ s.nombre_segments }} segments simplement appuyés de {{ '%.3f'|format(s.portee_m) }} m entre les {{ support.nombre_poutres }} poutres principales · {{ s.nombre_sabots }} sabots estimés{% if s.depassement_sous_principale_mm > 0 %} · dépasse de {{ '%.0f'|format(s.depassement_sous_principale_mm) }} mm sous les principales{% endif %}</p></div>
           <div class="prix"><strong>{{ '%.0f'|format(s.cout_eur) }} €</strong><span>{{ '%.0f'|format(s.cout_solives_eur) }} € de solives + {{ '%.0f'|format(s.cout_sabots_eur) }} € de sabots · système porteur total {{ '%.0f'|format(s.cout_eur + support.cout_eur) }} €</span></div>
@@ -296,11 +295,11 @@
 
       {% if resultat_solives %}<section class="panneau comparaison" data-onglet-contenu="solives"><div class="titre"><span>03</span><div><h2>Comparatif des solives</h2><p>Première trame conforme et économique pour chaque référence</p></div></div><div class="table-wrap"><table><thead><tr><th>Référence</th><th>Portée</th><th>Lignes</th><th>Entraxe courant</th><th>Isolant</th><th>Flèche</th><th>Flexion</th><th>Cisaillement</th><th>Vibration*</th><th>Sabots</th><th>Coût</th></tr></thead><tbody>{% for c in resultat_solives.configurations %}<tr class="{% if not c.conforme %}non-conforme{% endif %}"><th>{{ c.section.nom }}</th><td>{{ '%.3f'|format(c.portee_m) }} m</td><td>{{ c.nombre_lignes_solives }}</td><td>{{ '%.0f'|format(c.entraxe_mm) }} mm{% if c.entraxes_rive_mm %}<small>{{ c.entraxes_rive_mm|length }} rive{% if c.entraxes_rive_mm|length > 1 %}s{% endif %} ajustée{% if c.entraxes_rive_mm|length > 1 %}s{% endif %}</small>{% endif %}</td><td>{% if c.compression_isolant_mm is none %}—{% elif c.isolant_compatible %}<span class="pastille">OK</span><small>serrage {{ '%.0f'|format(c.compression_isolant_mm) }} mm</small>{% else %}<span class="pastille ko">À adapter</span><small>{{ '%.0f'|format(c.compression_isolant_mm) }} mm</small>{% endif %}</td><td>{{ '%.0f'|format(c.taux_fleche * 100) }} %</td><td>{{ '%.0f'|format(c.taux_flexion * 100) }} %</td><td>{{ '%.0f'|format(c.taux_cisaillement * 100) }} %</td><td>{% if c.taux_vibration is not none %}<span class="pastille {% if c.taux_vibration > 1 %}ko{% endif %}">{{ '%.0f'|format(c.taux_vibration * 100) }} %</span>{% else %}—{% endif %}</td><td>{{ c.nombre_sabots }}</td><td><strong>{{ '%.0f'|format(c.cout_eur) }} €</strong>{% if not c.conforme %}<small>{{ c.contraintes|join(', ') }}</small>{% endif %}</td></tr>{% endfor %}</tbody></table></div><p class="source">* Indicateur comparatif non bloquant, à confirmer sur le plancher complet.</p></section>{% endif %}
 
-      <section class="notes notes-solives" data-onglet-contenu="solives"><article><span>MODÈLE V2</span><h3>Segments sur sabots</h3><p>Chaque solive est découpée entre deux poutres principales et calculée comme simplement appuyée. Deux sabots sont comptés par segment.</p></article><article><span>ETA-20/0995</span><h3>Rigidités fabricant</h3><p>Flexion et cisaillement utilisent directement M<sub>k</sub>, V<sub>k</sub>, EI et GA publiés par STEICO, avec les facteurs de modification de classe de service.</p></article><article><span>À VÉRIFIER</span><h3>Sabots et renforts</h3><p>Le prix des EWH est estimé à 7,30 € pièce. Référence, pointes, capacité, renforts d’âme, anti-dévers et détails de rive restent à valider.</p></article><article><span>PROCHAINE ÉTAPE</span><h3>Objets lourds</h3><p>Les machines et véhicules localisés ne sont pas encore appliqués aux solives. Leur descente de charge sera ajoutée sur cette trame secondaire.</p></article></section>
+      <section class="notes notes-solives" data-onglet-contenu="solives"><article><span>MODÈLE V3</span><h3>Segments sur sabots</h3><p>Chaque solive est découpée entre deux poutres principales et calculée comme simplement appuyée. Deux sabots sont comptés par segment.</p></article><article><span>ETA-20/0995</span><h3>Rigidités fabricant</h3><p>Flexion et cisaillement utilisent directement M<sub>k</sub>, V<sub>k</sub>, EI et GA publiés par STEICO, avec les facteurs de modification de classe de service.</p></article><article><span>À VÉRIFIER</span><h3>Sabots et renforts</h3><p>Le prix des EWH est estimé à 7,30 € pièce. Référence, pointes, capacité, renforts d’âme, anti-dévers et détails de rive restent à valider.</p></article><article><span>PROCHAINE ÉTAPE</span><h3>Objets lourds</h3><p>Les machines et véhicules localisés ne sont pas encore appliqués aux solives. Leur descente de charge sera ajoutée sur cette trame secondaire.</p></article></section>
 
       {% if resultat %}
       <section class="panneau comparaison" data-onglet-contenu="principales">
-        <div class="titre"><span>03</span><div><h2>Comparatif</h2><p>Meilleure trame principale de chaque section et de chaque sens</p></div></div>
+        <div class="titre"><span>03</span><div><h2>Comparatif</h2><p>Meilleure trame de chaque section dans chaque sens</p></div></div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Rang</th><th>Section</th><th>Travées</th><th>Appuis int.</th><th>Poutres</th><th>Entraxe</th><th>Flèche</th><th>Taux max.</th><th>Bois</th><th>Appuis</th><th>Total</th></tr></thead>
@@ -308,7 +307,7 @@
             {% for c in resultat.configurations %}
               <tr class="{% if not c.conforme %}non-conforme{% endif %}">
                 <td>{% if c.conforme %}{{ loop.index }}{% else %}—{% endif %}</td>
-                <th>{{ c.section.nom }}<small>{{ c.orientation }}</small></th>
+                <th>{{ c.section.nom }}<small>{{ c.section.classe_resistance }} · {{ c.orientation }}</small></th>
                 <td>{{ c.nombre_travees }} × {{ '%.2f'|format(c.portee_m) }} m</td>
                 <td>{{ c.nombre_lignes_appui_intermediaires }} int. + 2 rives<small>{{ c.nombre_pieux_total }} pieux · R max={{ '%.1f'|format(c.reaction_pieu_max_elu_kN) }} kN</small></td>
                 <td>{{ c.nombre_poutres }}</td>
@@ -329,7 +328,7 @@
       <section class="notes" data-onglet-contenu="principales">
         <article><span>HYPOTHÈSE</span><h3>Travées égales</h3><p>Chaque travée est calculée comme simplement appuyée. Sous charge uniforme, leur répartition égale minimise la portée dimensionnante. La continuité éventuelle de la poutre n’est pas créditée.</p></article>
         <article><span>ELS</span><h3>Profils de flèche</h3><p>w<sub>fin</sub> = w<sub>G</sub>(1+k<sub>def</sub>) + w<sub>Q</sub>(1+ψ₂k<sub>def</sub>). Atelier L/250, maison L/300, finitions fragiles L/400 et toiture L/200 sont des hypothèses de projet modifiables.</p></article>
-        <article><span>COUPLAGE V2</span><h3>Portée des solives</h3><p>La distance entre poutres principales devient la portée calculée dans l’onglet Solives en I. Le champ « portée secondaire maximale » borne cette distance dès l’optimisation des principales.</p></article>
+        <article><span>COUPLAGE V3</span><h3>Coût du système complet</h3><p>La distance entre poutres principales devient la portée calculée des solives. Le choix final compare ensemble poutres, pieux, solives et sabots, avec le poids des solives réinjecté dans les principales.</p></article>
         <article><span>PIEUX VISSÉS</span><h3>Rives et quatre coins</h3><p>Chaque poutre repose sur un pieu à ses deux extrémités : les quatre coins sont donc toujours présents. Un pieu intérieur reçoit les demi-réactions des deux travées adjacentes. Les 5 t sont provisoirement comparées à la réaction ELU.</p></article>
         <article><span>CONFORT</span><h3>Vibration indicative</h3><p>La fréquence et la flèche sous 1 kN portent sur une poutre principale isolée. Sans solives en I, diaphragme, masse modale et amortissement du plancher complet, cette jauge informe mais ne bloque pas l’optimisation.</p></article>
         <article><span>À FAIRE VALIDER</span><h3>Pré-dimensionnement</h3><p>La compression bois/platine est simplifiée. Sol, flambement, corrosion et arrachement des pieux, résistance et fixation de la platine, liaisons, effets horizontaux, rives et stabilité globale restent hors calcul.</p></article>

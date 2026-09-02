@@ -17,6 +17,7 @@ from .calcul import (
     ResultatConfiguration,
     ResultatOptimisation,
     SECTIONS_FOURNISSEUR,
+    evaluer_configuration,
     optimiser,
 )
 
@@ -173,6 +174,14 @@ class ResultatSystemePorteur:
     principales: ResultatOptimisation
     solives: ResultatOptimisationSolives | None
     masse_solives_kg_m2: float
+
+    @property
+    def cout_total_eur(self) -> float | None:
+        if self.principales.meilleure is None or self.solives is None:
+            return None
+        if self.solives.meilleure is None:
+            return None
+        return self.principales.meilleure.cout_eur + self.solives.meilleure.cout_eur
 
 
 def _fleche_uniforme_mm(
@@ -501,6 +510,11 @@ def optimiser_solives(
     configurations.sort(
         key=lambda c: (
             not c.conforme,
+            bool(
+                hypotheses.largeur_isolant_mm
+                and c.conforme
+                and not c.isolant_compatible
+            ),
             c.cout_eur if c.conforme else c.taux_dimensionnant,
             c.masse_solives_kg,
         )
@@ -523,6 +537,116 @@ def optimiser_solives(
     )
 
 
+def _borne_cout_solives(
+    support: ResultatConfiguration,
+    hypotheses: HypothesesSolives,
+    sections: tuple[CatalogueSolive, ...] | list[CatalogueSolive],
+) -> float:
+    """Borne inférieure de coût utilisée pour écarter les couples trop chers."""
+    nombre_lignes = max(
+        2,
+        ceil(
+            support.portee_totale_m
+            / (hypotheses.entraxe_max_mm / 1_000)
+        )
+        + 1,
+    )
+    return min(
+        nombre_lignes * support.largeur_repartie_m * section.prix_eur_m
+        + (
+            2
+            * nombre_lignes
+            * (support.nombre_poutres - 1)
+            * COUT_SABOT_EWH_EUR
+            if hypotheses.inclure_sabots
+            else 0
+        )
+        for section in sections
+    )
+
+
+def _choisir_systeme_complet(
+    projet: HypothesesProjet,
+    hypotheses_solives: HypothesesSolives,
+    principales: ResultatOptimisation,
+    sections_solives: tuple[CatalogueSolive, ...] | list[CatalogueSolive],
+) -> tuple[ResultatConfiguration, ResultatOptimisationSolives] | None:
+    """Compare le coût poutres + pieux + solives + sabots.
+
+    Les configurations principales sont évaluées sans détail de pieux durant
+    cette recherche. La configuration finalement retenue est matérialisée une
+    seule fois par l'appelant.
+    """
+    candidats = principales.candidats_conformes or tuple(
+        configuration
+        for configuration in principales.configurations
+        if configuration.conforme
+    )
+    compatibilite_isolant_possible = bool(
+        hypotheses_solives.largeur_isolant_mm
+        and any(
+            hypotheses_solives.entraxe_max_mm + 1e-9
+            >= section.largeur_mm
+            + hypotheses_solives.largeur_isolant_mm
+            - 20
+            for section in sections_solives
+        )
+    )
+    ordonnes = sorted(
+        candidats,
+        key=lambda support: (
+            support.cout_eur
+            + _borne_cout_solives(
+                support,
+                hypotheses_solives,
+                sections_solives,
+            ),
+            support.cout_eur,
+        ),
+    )
+    meilleur: tuple[ResultatConfiguration, ResultatOptimisationSolives] | None = None
+    meilleure_cle: tuple[bool, bool, float, int, float] | None = None
+    for support in ordonnes:
+        borne = support.cout_eur + _borne_cout_solives(
+            support,
+            hypotheses_solives,
+            sections_solives,
+        )
+        # Une fois un assemblage en hauteur et un calepinage compatibles
+        # trouvés, les bornes suivantes ne peuvent plus améliorer le coût.
+        if (
+            meilleure_cle is not None
+            and not meilleure_cle[0]
+            and not meilleure_cle[1]
+            and borne > meilleure_cle[2] + 1e-9
+        ):
+            break
+        resultat_solives = optimiser_solives(
+            projet,
+            hypotheses_solives,
+            support,
+            sections_solives,
+        )
+        solive = resultat_solives.meilleure
+        if solive is None:
+            continue
+        incompatible = bool(
+            compatibilite_isolant_possible
+            and not solive.isolant_compatible
+        )
+        cle = (
+            not solive.assemblage_standard_compatible,
+            incompatible,
+            support.cout_eur + solive.cout_eur,
+            support.nombre_pieux_total,
+            max(support.taux_dimensionnant, solive.taux_dimensionnant),
+        )
+        if meilleure_cle is None or cle < meilleure_cle:
+            meilleure_cle = cle
+            meilleur = support, resultat_solives
+    return meilleur
+
+
 def optimiser_systeme_porteur(
     projet: HypothesesProjet,
     hypotheses_solives: HypothesesSolives,
@@ -534,39 +658,50 @@ def optimiser_systeme_porteur(
     La charge surfacique saisie reste inchangée dans l'interface. Seul le calcul
     des principales reçoit automatiquement le poids des STEICOjoist retenues.
     """
+    if not sections_solives:
+        raise ValueError("sélectionnez au moins une section de solive")
     masse_solives_kg_m2 = 0.0
     empreinte_precedente: tuple[object, ...] | None = None
-    principales: ResultatOptimisation | None = None
-    resultat_solives: ResultatOptimisationSolives | None = None
 
-    for _ in range(6):
+    for _ in range(12):
         projet_principales = replace(
             projet,
             masse_permanente_kg_m2=(
                 projet.masse_permanente_kg_m2 + masse_solives_kg_m2
             ),
         )
-        principales = optimiser(projet_principales, sections_principales)
+        principales = optimiser(
+            projet_principales,
+            sections_principales,
+            exploration_systeme=True,
+        )
         if principales.meilleure is None:
             return ResultatSystemePorteur(
                 principales=replace(principales, hypotheses=projet),
                 solives=None,
                 masse_solives_kg_m2=masse_solives_kg_m2,
             )
-        resultat_solives = optimiser_solives(
+        choix = _choisir_systeme_complet(
             projet,
             hypotheses_solives,
-            principales.meilleure,
+            principales,
             sections_solives,
         )
-        if resultat_solives.meilleure is None:
+        if choix is None:
+            resultat_solives = optimiser_solives(
+                projet,
+                hypotheses_solives,
+                principales.meilleure,
+                sections_solives,
+            )
             return ResultatSystemePorteur(
                 principales=replace(principales, hypotheses=projet),
                 solives=resultat_solives,
                 masse_solives_kg_m2=masse_solives_kg_m2,
             )
-        meilleure_principale = principales.meilleure
+        meilleure_principale, resultat_solives = choix
         meilleure_solive = resultat_solives.meilleure
+        assert meilleure_solive is not None
         nouvelle_masse = meilleure_solive.masse_solives_kg / projet.surface_m2
         empreinte = (
             meilleure_principale.section.nom,
@@ -582,24 +717,20 @@ def optimiser_systeme_porteur(
             break
         empreinte_precedente = empreinte
         masse_solives_kg_m2 = nouvelle_masse
-
-    # Recalcul final avec la masse convergée afin que les taux des principales
-    # correspondent exactement au système affiché.
-    projet_principales = replace(
-        projet,
-        masse_permanente_kg_m2=projet.masse_permanente_kg_m2 + masse_solives_kg_m2,
-    )
-    principales = optimiser(projet_principales, sections_principales)
-    resultat_solives = (
-        optimiser_solives(
-            projet,
-            hypotheses_solives,
-            principales.meilleure,
-            sections_solives,
+    else:
+        raise ValueError(
+            "le couplage entre principales et solives ne converge pas"
         )
-        if principales.meilleure
-        else None
+
+    support_detaille = evaluer_configuration(
+        projet_principales,
+        meilleure_principale.section,
+        meilleure_principale.orientation,
+        meilleure_principale.nombre_poutres,
+        meilleure_principale.nombre_travees,
     )
+    principales = replace(principales, meilleure=support_detaille)
+    resultat_solives = replace(resultat_solives, support=support_detaille)
     return ResultatSystemePorteur(
         principales=replace(principales, hypotheses=projet),
         solives=resultat_solives,

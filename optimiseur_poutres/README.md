@@ -1,9 +1,9 @@
 # Optimiseur du système poutres, pieux et solives en I
 
 Application Flask locale de pré-dimensionnement du système porteur d'une surface
-rectangulaire. Deux onglets dimensionnent successivement les poutres principales
-sur pieux vissés et les solives STEICOjoist posées perpendiculairement entre les
-principales.
+rectangulaire. Deux onglets présentent les poutres principales sur pieux vissés
+et les solives STEICOjoist posées perpendiculairement entre les principales. Le
+choix économique est effectué sur le système complet, pas étage par étage.
 
 ```bash
 python -m optimiseur_poutres.webapp
@@ -19,6 +19,25 @@ stabilité, feu, séisme et panneaux ne sont pas vérifiés.
 
 ## Poutres principales et pieux
 
+Le catalogue principal compare trois références dont la géométrie et la classe
+de résistance sont verrouillées :
+
+- `120 × 240 mm` C24, `40,01 €/m`, longueur maximale `13 m` ;
+- `140 × 320 mm` GL24H, `68,80 €/m`, longueur standard `13,50 m` ;
+- `140 × 360 mm` GL24H, `77,40 €/m`, longueur standard `13,50 m`.
+
+Le prix au mètre et la longueur commerciale restent éditables. Le C24 utilise
+les propriétés avancées saisies dans le projet. Le GL24H utilise ses propriétés
+de classe (`E0,mean = 11 500 MPa`, `Gmean = 650 MPa`, `fm,k = 24 MPa`,
+`fv,k = 3,5 MPa`, `fc,90,k = 2,5 MPa`) et la densité `450 kg/m³` annoncée par
+le fournisseur.
+
+La longueur commerciale doit couvrir le plus grand côté du plancher, quelle que
+soit l'orientation retenue pour les principales. Cette règle inclut les pièces
+de rive du système complet et aucun aboutage n'est modélisé : un rectangle dont
+un côté mesure `13,50 m` exclut donc toujours le C24 limité à `13 m`, mais reste
+compatible avec les deux GL24H de `13,50 m`.
+
 La distance entre deux poutres principales devient la portée utilisée dans
 l'onglet des solives. Le champ de portée secondaire maximale borne cette
 distance dès la recherche des principales ; sa valeur par défaut est `4 m` et
@@ -29,8 +48,7 @@ section insuffisante.
 
 Les appuis intermédiaires sont des pieux vissés répartis en rangées de travées
 égales et chaque travée est vérifiée comme simplement appuyée. L'optimisation
-détermine automatiquement le nombre de rangées : elle s'arrête dès que des
-travées supplémentaires ne pourraient plus réduire la quantité de bois. Un pieu
+détermine automatiquement le nombre de rangées par recherche bornée. Un pieu
 est placé sous chaque poutre à chaque rangée, avec un coût de `500 €`, une
 platine indicative de `200 mm` et une capacité statique figée de `5 t`, soit
 `49,05 kN`. Une réaction ELU supérieure rend la configuration non conforme.
@@ -61,7 +79,7 @@ inclure les solives secondaires, la masse et la rigidité du plancher, le
 diaphragme et l'amortissement. Elle n'est donc pas utilisée pour déclarer une
 configuration conforme.
 
-## Solives STEICOjoist — V2
+## Solives STEICOjoist — V3
 
 Le catalogue initial reprend les trois produits disponibles sur la fiche
 Matériaux Naturels au 2 septembre 2026 :
@@ -108,7 +126,11 @@ le porteur avec les fixations prescrites et ne justifie explicitement que le cas
 inverse, où le porteur est plus haut que le sabot. Il faut alors faire valider une
 poutre principale au moins aussi haute ou un connecteur/détail de reprise prévu
 pour le décalage ; la seule référence dimensionnelle du sabot ne vaut pas
-validation de sa capacité.
+validation de sa capacité. Lorsqu'au moins une combinaison compatible en hauteur
+existe dans les catalogues actifs, elle est prioritaire dans le choix du système
+complet avant la comparaison économique. Cela permet notamment aux `140 × 320`
+et `140 × 360` de recevoir respectivement les `SJ60/300` et `SJ90/360` sans
+dépassement géométrique.
 
 Deux sabots sont comptés par segment au prix indicatif de `7,30 €` pièce. Leur
 résistance, la référence exacte, les pointes, les renforts d'âme, les anti-dévers
@@ -116,18 +138,44 @@ et les détails de rive restent à vérifier. Le poids propre des solives retenu
 est automatiquement converti en kg/m² et réinjecté dans la charge permanente
 des poutres principales et des pieux jusqu'à stabilisation de la solution.
 
-Le plan V2 superpose les principales et les solives à l'échelle. La fréquence
+## Moteur d'optimisation
+
+Le moteur sépare désormais deux opérations :
+
+- l'évaluation légère des contraintes et des coûts pendant la recherche ;
+- la création détaillée des pieux, coordonnées et réactions uniquement pour
+  les résultats effectivement exposés ou exportés.
+
+Pour chaque section, chaque orientation et chaque nombre de travées, la
+première trame de poutres conforme est trouvée par dichotomie. Des bornes de coût
+arrêtent les branches qui ne peuvent plus améliorer le résultat. Les candidats
+utiles sont ensuite comparés avec leur solution de solives, leurs sabots et le
+poids propre réinjecté. La compatibilité de hauteur principale/solive puis la
+priorité de calepinage 575/600 mm sont appliquées avant le coût lorsqu'une trame
+compatible existe.
+
+Le calcul structurel n'est pas formulé en MILP : les portées dépendent des
+entiers recherchés par des quotients, et la flèche contient notamment une
+puissance quatrième de la portée. Une linéarisation apporterait ici des
+approximations et un solveur supplémentaire sans avantage sur cette recherche
+discrète bornée. Un MILP reste pertinent pour une future optimisation de
+commande et de débit à partir de longueurs commerciales, qui est un problème
+linéaire distinct du dimensionnement mécanique.
+
+Le plan V3 superpose les principales et les solives à l'échelle. La fréquence
 propre et la flèche sous `1 kN` y restent indicatives tant que le panneau, son
 effet diaphragme, les assemblages et l'amortissement ne sont pas modélisés. Les
 machines et véhicules localisés constituent l'étape suivante.
 
-Trois lectures de l'optimisation sont présentées : coût minimal, nombre minimal
-de pieux et meilleure marge structurelle parmi les configurations explorées.
+Trois lectures de l'optimisation sont présentées : système complet retenu,
+nombre minimal de pieux et meilleure marge structurelle parmi les
+configurations explorées.
 Le CSV exporte l'implantation et les réactions de chaque pieu ; le PDF rassemble
 les hypothèses, les taux de travail, le plan à l'échelle et la descente de
 charges. Les résultats exportés sont recalculés depuis les valeurs visibles du
 formulaire.
 
-Les catalogues initiaux proviennent des fiches « Poutre et poteau en épicéa
-contrecollé C24 » et « Poutre en I STEICO joist » de Matériaux Naturels,
-relevées le 2 septembre 2026. Les prix restent éditables dans l'interface.
+Les poutres principales et le catalogue de solives proviennent des fiches
+« Poutre et poteau en épicéa contrecollé C24 », « Panne lamellé-collé en
+épicéa » et « Poutre en I STEICO joist » de Matériaux Naturels, relevées le
+2 septembre 2026. Les prix restent éditables dans l'interface.

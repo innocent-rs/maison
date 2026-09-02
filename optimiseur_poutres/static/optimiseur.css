@@ -64,9 +64,7 @@ button { border: 0; cursor: pointer; font: inherit; font-weight: 800; }
 .onglet-bouton small { margin-left: auto; padding: .2rem .4rem; background: var(--vert-clair); color: var(--vert); }
 .onglet-bouton.actif { box-shadow: inset 0 -4px 0 var(--vert); color: var(--encre); }
 [hidden] { display: none !important; }
-.supprimer { padding: .3rem .55rem; background: transparent; color: var(--rouge); font-size: 1.15rem; }
 .actions { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.25rem; }
-.secondaire { padding: .8rem 1rem; border: 1px solid var(--trait); background: transparent; color: var(--encre); }
 .calculer { min-width: 260px; display: flex; justify-content: space-between; padding: .85rem 1rem; background: var(--encre); color: white; }
 .calculer:hover { background: var(--vert); }
 .source { margin: 1rem 0 0; color: var(--gris); font-size: .7rem; }

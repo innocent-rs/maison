@@ -1,6 +1,6 @@
 import unittest
 
-from optimiseur_poutres.calcul import HypothesesProjet, optimiser
+from optimiseur_poutres.calcul import HypothesesProjet, SECTIONS_FOURNISSEUR, optimiser
 from optimiseur_poutres.solives import (
     COUT_SABOT_EWH_EUR,
     HypothesesSolives,
@@ -108,10 +108,14 @@ class TestOptimiseurSolives(unittest.TestCase):
         self.assertEqual(resultat.meilleure_confort.section.nom, "SJ60/300")
         self.assertLessEqual(resultat.meilleure_confort.taux_vibration, 1)
         self.assertGreater(resultat.meilleure_confort.cout_eur, meilleure.cout_eur)
+        self.assertTrue(resultat.meilleure_confort.assemblage_standard_compatible)
         self.assertEqual(
             resultat.meilleure_confort.depassement_sous_principale_mm,
-            resultat.meilleure_confort.section.hauteur_mm
-            - self.support.section.hauteur_mm,
+            max(
+                0,
+                resultat.meilleure_confort.section.hauteur_mm
+                - self.support.section.hauteur_mm,
+            ),
         )
 
     def test_isolant_600_signale_une_recoupe_avec_entraxe_625(self) -> None:
@@ -190,16 +194,50 @@ class TestOptimiseurSolives(unittest.TestCase):
         self.assertEqual(max(intervalles), meilleure.entraxe_mm)
 
     def test_depassement_ne_valide_pas_un_assemblage_standard(self) -> None:
+        support_240 = optimiser(
+            self.projet,
+            sections=[SECTIONS_FOURNISSEUR[0]],
+        ).meilleure
+        self.assertIsNotNone(support_240)
         resultat = optimiser_solives(
             self.projet,
             self.hypotheses,
-            self.support,
+            support_240,
             [SOLIVES_FOURNISSEUR[1]],
         )
 
         self.assertIsNotNone(resultat.meilleure)
         self.assertGreater(resultat.meilleure.depassement_sous_principale_mm, 0)
         self.assertFalse(resultat.meilleure.assemblage_standard_compatible)
+
+    def test_solive_300_fait_choisir_une_principale_assez_haute(self) -> None:
+        systeme = optimiser_systeme_porteur(
+            self.projet,
+            self.hypotheses,
+            sections_solives=[SOLIVES_FOURNISSEUR[1]],
+        )
+
+        self.assertIsNotNone(systeme.principales.meilleure)
+        self.assertIsNotNone(systeme.solives)
+        self.assertIsNotNone(systeme.solives.meilleure)
+        self.assertGreaterEqual(systeme.principales.meilleure.section.hauteur_mm, 300)
+        self.assertTrue(systeme.solives.meilleure.assemblage_standard_compatible)
+
+    def test_13m50x10_atelier_exclut_le_c24_dans_le_systeme_complet(self) -> None:
+        systeme = optimiser_systeme_porteur(
+            HypothesesProjet(
+                longueur_m=13.5,
+                largeur_m=10,
+                profil_usage="atelier",
+                masse_permanente_kg_m2=100,
+                masse_exploitation_kg_m2=250,
+            ),
+            self.hypotheses,
+        )
+
+        self.assertIsNotNone(systeme.principales.meilleure)
+        self.assertEqual(systeme.principales.meilleure.section.nom, "140 × 320")
+        self.assertEqual(systeme.principales.meilleure.portee_totale_m, 13.5)
 
     def test_poids_des_solives_est_reinjecte_dans_les_principales(self) -> None:
         systeme = optimiser_systeme_porteur(self.projet, self.hypotheses)
@@ -208,8 +246,26 @@ class TestOptimiseurSolives(unittest.TestCase):
         self.assertIsNotNone(systeme.principales.meilleure)
         self.assertIsNotNone(systeme.solives)
         self.assertIsNotNone(systeme.solives.meilleure)
-        self.assertEqual(systeme.principales.meilleure.section.nom, "120 × 240")
+        self.assertIn(systeme.principales.meilleure.section, SECTIONS_FOURNISSEUR)
         self.assertTrue(systeme.principales.meilleure.conforme)
+
+    def test_24x12_depasse_toutes_les_longueurs_commerciales(self) -> None:
+        projet = HypothesesProjet(longueur_m=24, largeur_m=12)
+
+        systeme = optimiser_systeme_porteur(projet, self.hypotheses)
+
+        self.assertIsNone(systeme.principales.meilleure)
+        self.assertIsNone(systeme.solives)
+        self.assertIsNone(systeme.cout_total_eur)
+
+    def test_grand_plancher_sans_aboutage_n_a_pas_de_solution(self) -> None:
+        projet = HypothesesProjet(longueur_m=30, largeur_m=20)
+
+        systeme = optimiser_systeme_porteur(projet, self.hypotheses)
+
+        self.assertIsNone(systeme.principales.meilleure)
+        self.assertIsNone(systeme.solives)
+        self.assertIsNone(systeme.cout_total_eur)
 
     def test_refuse_un_catalogue_vide(self) -> None:
         with self.assertRaises(ValueError):
