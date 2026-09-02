@@ -100,6 +100,13 @@ def pdf_rapport(
                 f"Choix : STEICOjoist {solives.section.nom}",
                 f"Portée : {solives.portee_m:.3f} m entre poutres principales",
                 f"Trame : {solives.nombre_lignes_solives} lignes à {solives.entraxe_mm:.0f} mm",
+                f"Vide entre membrures : {solives.largeur_vide_isolant_mm:.0f} mm"
+                + (
+                    f" · serrage isolant {solives.compression_isolant_mm:.0f} mm"
+                    if solives.compression_isolant_mm is not None
+                    else ""
+                ),
+                f"Dépassement sous les principales : {solives.depassement_sous_principale_mm:.0f} mm",
                 f"Débit : {solives.nombre_segments} segments · {solives.longueur_totale_m:.1f} m",
                 f"Sabots estimés : {solives.nombre_sabots} · réaction ELU max. {solives.reaction_sabot_elu_kN:.2f} kN",
                 "",

@@ -146,6 +146,12 @@ button { border: 0; cursor: pointer; font: inherit; font-weight: 800; }
 .conseil-confort > div:last-child { justify-items: end; text-align: right; }
 .conseil-confort span { color: #f0a06e; font-size: .65rem; font-weight: 850; letter-spacing: .1em; }
 .conseil-confort small { color: #aab6b2; }
+.alerte-geometrie, .calepinage-isolant { display: grid; gap: .25rem; margin-top: 1rem; padding: .9rem 1.1rem; border-left: 4px solid #efa061; background: #2b3f46; }
+.alerte-geometrie span, .calepinage-isolant small { color: #b7c2be; font-size: .72rem; line-height: 1.5; }
+.calepinage-isolant { border-left-color: #58b78e; }
+.calepinage-isolant.a-adapter { border-left-color: #efa061; }
+.calepinage-isolant > div { display: flex; justify-content: space-between; gap: 1rem; }
+.calepinage-isolant span { color: #8fd1b4; font-size: .65rem; font-weight: 850; letter-spacing: .1em; }
 .objectifs .panneau { margin: 0; }
 .objectifs .actif { border-top: 4px solid var(--vert); }
 .objectifs article > span { color: var(--orange); font-size: .67rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
@@ -186,4 +192,5 @@ footer { padding: 1.5rem; border-top: 1px solid var(--trait); color: var(--gris)
   .exports-actions { align-items: stretch; flex-direction: column; }
   .conseil-confort { align-items: flex-start; flex-direction: column; }
   .conseil-confort > div:last-child { justify-items: start; text-align: left; }
+  .calepinage-isolant > div { flex-direction: column; }
 }

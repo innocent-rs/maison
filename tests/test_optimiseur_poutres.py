@@ -269,9 +269,10 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
             "section_hauteur": "200",
             "section_prix": "29,02",
             "section_longueur_max": "13",
-            "entraxe_solives_max_mm": "600",
+            "entraxe_solives_max_mm": "625",
             "classe_service_solives": "2",
             "limite_fleche_solives_diviseur": "350",
+            "largeur_isolant_mm": "575",
             "inclure_sabots": "on",
             "solive_active": ["0", "1", "2"],
             "solive_prix": ["14,10", "14,40", "20,30"],
@@ -324,6 +325,26 @@ class TestWebOptimiseurPoutres(unittest.TestCase):
 
         self.assertEqual(reponse.status_code, 200)
         self.assertIn("0 sabots estimés", reponse.text)
+
+    def test_solive_plus_haute_affiche_le_depassement_et_le_sabot(self) -> None:
+        data = self._formulaire_valide()
+        data["solive_active"] = ["1"]
+        data["onglet_actif"] = "solives"
+        reponse = self.client.post("/", data=data)
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIn("Solive plus haute que la poutre principale", reponse.text)
+        self.assertIn("EWH 300/61", reponse.text)
+
+    def test_isolant_600_affiche_l_adaptation_necessaire(self) -> None:
+        data = self._formulaire_valide()
+        data["largeur_isolant_mm"] = "600"
+        data["onglet_actif"] = "solives"
+        reponse = self.client.post("/", data=data)
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIn("CALEPINAGE ISOLANT 600 MM", reponse.text)
+        self.assertIn("prévoir une recoupe", reponse.text)
 
     def test_export_csv_contient_coordonnees_et_reactions(self) -> None:
         reponse = self.client.post(

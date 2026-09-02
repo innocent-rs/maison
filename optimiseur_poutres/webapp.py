@@ -129,17 +129,21 @@ def _lire_hypotheses_solives(formulaire: Any) -> HypothesesSolives:
     classe_service = valeur_ou_defaut("classe_service_solives", 2)
     if not classe_service.is_integer():
         raise ValueError("la classe de service des solives doit être 1 ou 2")
+    largeur_isolant = valeur_ou_defaut("largeur_isolant_mm", 575)
+    if not largeur_isolant.is_integer():
+        raise ValueError("la largeur d'isolant doit être 575 mm, 600 mm ou désactivée")
     inclure_sabots = (
         formulaire.get("inclure_sabots") == "on"
         if formulaire.get("entraxe_solives_max_mm") not in (None, "")
         else True
     )
     return HypothesesSolives(
-        entraxe_max_mm=valeur_ou_defaut("entraxe_solives_max_mm", 600),
+        entraxe_max_mm=valeur_ou_defaut("entraxe_solives_max_mm", 625),
         classe_service=int(classe_service),
         limite_fleche_diviseur=valeur_ou_defaut(
             "limite_fleche_solives_diviseur", 350
         ),
+        largeur_isolant_mm=int(largeur_isolant),
         inclure_sabots=inclure_sabots,
     )
 

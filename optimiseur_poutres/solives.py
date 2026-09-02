@@ -64,9 +64,10 @@ SOLIVES_FOURNISSEUR = (
 
 @dataclass(frozen=True, slots=True)
 class HypothesesSolives:
-    entraxe_max_mm: float = 600.0
+    entraxe_max_mm: float = 625.0
     classe_service: int = 2
     limite_fleche_diviseur: float = 350.0
+    largeur_isolant_mm: int = 575
     inclure_sabots: bool = True
 
     def __post_init__(self) -> None:
@@ -76,6 +77,8 @@ class HypothesesSolives:
             raise ValueError("la classe de service des solives doit être 1 ou 2")
         if self.limite_fleche_diviseur <= 0:
             raise ValueError("la limite de flèche des solives doit être positive")
+        if self.largeur_isolant_mm not in (0, 575, 600):
+            raise ValueError("la largeur d'isolant doit être 575 mm, 600 mm ou désactivée")
 
     @property
     def kmod_flexion(self) -> float:
@@ -96,6 +99,9 @@ class ResultatConfigurationSolives:
     nombre_segments: int
     nombre_sabots: int
     entraxe_mm: float
+    largeur_vide_isolant_mm: float
+    compression_isolant_mm: float | None
+    depassement_sous_principale_mm: float
     longueur_totale_m: float
     masse_solives_kg: float
     cout_solives_eur: float
@@ -130,6 +136,14 @@ class ResultatConfigurationSolives:
         if self.taux_dimensionnant == self.taux_flexion:
             return "Flexion ELU"
         return "Cisaillement ELU"
+
+    @property
+    def isolant_compatible(self) -> bool | None:
+        if self.compression_isolant_mm is None:
+            return None
+        # Une surlargeur de 0 à 20 mm permet une pose légèrement serrée sans
+        # transformer l'isolant souple en variable structurelle.
+        return 0 <= self.compression_isolant_mm <= 20
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,6 +196,16 @@ def evaluer_solives(
     portee_m = support.entraxe_m
     longueur_zone_m = support.portee_totale_m
     entraxe_m = longueur_zone_m / (nombre_lignes_solives - 1)
+    largeur_vide_isolant = entraxe_m * 1_000 - section.largeur_mm
+    compression_isolant = (
+        hypotheses.largeur_isolant_mm - largeur_vide_isolant
+        if hypotheses.largeur_isolant_mm
+        else None
+    )
+    depassement_sous_principale = max(
+        0.0,
+        section.hauteur_mm - support.section.hauteur_mm,
+    )
     charge_g = projet.charge_g_surfacique_kN_m2 * entraxe_m
     charge_g += section.poids_kg_m * 9.81 / 1_000
     charge_q = projet.charge_q_surfacique_kN_m2 * entraxe_m
@@ -257,6 +281,9 @@ def evaluer_solives(
         nombre_segments=nombre_segments,
         nombre_sabots=nombre_sabots,
         entraxe_mm=entraxe_m * 1_000,
+        largeur_vide_isolant_mm=largeur_vide_isolant,
+        compression_isolant_mm=compression_isolant,
+        depassement_sous_principale_mm=depassement_sous_principale,
         longueur_totale_m=longueur_totale,
         masse_solives_kg=longueur_totale * section.poids_kg_m,
         cout_solives_eur=cout_solives,
@@ -307,7 +334,23 @@ def optimiser_solives(
         ]
         conformes = [c for c in candidats if c.conforme]
         if conformes:
-            configurations.append(min(conformes, key=lambda c: (c.cout_eur, c.entraxe_mm)))
+            if hypotheses.largeur_isolant_mm:
+                compatibles = [c for c in conformes if c.isolant_compatible]
+                if compatibles:
+                    choix = min(compatibles, key=lambda c: (c.cout_eur, c.entraxe_mm))
+                else:
+                    choix = min(
+                        conformes,
+                        key=lambda c: (
+                            abs((c.compression_isolant_mm or 0) - 10),
+                            c.cout_eur,
+                        ),
+                    )
+                configurations.append(choix)
+            else:
+                configurations.append(
+                    min(conformes, key=lambda c: (c.cout_eur, c.entraxe_mm))
+                )
         elif candidats:
             configurations.append(min(candidats, key=lambda c: c.taux_dimensionnant))
 

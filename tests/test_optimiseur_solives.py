@@ -33,7 +33,7 @@ class TestOptimiseurSolives(unittest.TestCase):
 
         self.assertIsNotNone(resultat.meilleure)
         self.assertAlmostEqual(resultat.meilleure.portee_m, self.support.entraxe_m)
-        self.assertLessEqual(resultat.meilleure.entraxe_mm, 600)
+        self.assertLessEqual(resultat.meilleure.entraxe_mm, 625)
 
     def test_segments_sabots_longueur_et_cout_sont_coherents(self) -> None:
         resultat = evaluer_solives(
@@ -96,15 +96,34 @@ class TestOptimiseurSolives(unittest.TestCase):
 
         self.assertIsNotNone(meilleure)
         self.assertEqual(meilleure.section.nom, "SJ60/240")
-        self.assertEqual(meilleure.nombre_lignes_solives, 18)
-        self.assertEqual(meilleure.nombre_segments, 54)
-        self.assertEqual(meilleure.nombre_sabots, 108)
+        self.assertEqual(meilleure.nombre_lignes_solives, 17)
+        self.assertEqual(meilleure.nombre_segments, 51)
+        self.assertEqual(meilleure.nombre_sabots, 102)
         self.assertTrue(meilleure.conforme)
+        self.assertEqual(meilleure.largeur_vide_isolant_mm, 565)
+        self.assertEqual(meilleure.compression_isolant_mm, 10)
+        self.assertTrue(meilleure.isolant_compatible)
         self.assertGreater(meilleure.frequence_propre_hz, 0)
         self.assertGreater(meilleure.fleche_sous_1kn_mm, 0)
         self.assertEqual(resultat.meilleure_confort.section.nom, "SJ60/300")
         self.assertLessEqual(resultat.meilleure_confort.taux_vibration, 1)
         self.assertGreater(resultat.meilleure_confort.cout_eur, meilleure.cout_eur)
+        self.assertEqual(
+            resultat.meilleure_confort.depassement_sous_principale_mm,
+            resultat.meilleure_confort.section.hauteur_mm
+            - self.support.section.hauteur_mm,
+        )
+
+    def test_isolant_600_signale_une_recoupe_avec_entraxe_625(self) -> None:
+        resultat = optimiser_solives(
+            self.projet,
+            HypothesesSolives(largeur_isolant_mm=600),
+            self.support,
+        )
+
+        self.assertEqual(resultat.meilleure.largeur_vide_isolant_mm, 565)
+        self.assertEqual(resultat.meilleure.compression_isolant_mm, 35)
+        self.assertFalse(resultat.meilleure.isolant_compatible)
 
     def test_poids_des_solives_est_reinjecte_dans_les_principales(self) -> None:
         systeme = optimiser_systeme_porteur(self.projet, self.hypotheses)

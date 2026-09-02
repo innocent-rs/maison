@@ -79,9 +79,23 @@ Chaque solive est divisée en segments simplement appuyés entre deux poutres
 principales, conformément au principe de pose sur sabots retenu pour le projet.
 L'optimiseur recherche la référence et le nombre de lignes qui respectent
 l'entraxe maximal, la flexion, le cisaillement et la flèche finale. Le réglage
-initial est une classe de service 2, un entraxe maximal de `600 mm` et une limite
+initial est une classe de service 2, un entraxe maximal de `625 mm` et une limite
 de flèche `L/350`, cohérente avec l'abaque de pré-dimensionnement de plancher
 publié par STEICO.
+
+Le calepinage peut privilégier un isolant souple de `575 mm` ou `600 mm`. Pour
+chaque référence, l'outil calcule le vide réel entre membrures et cherche, parmi
+les trames structurellement conformes, une pose légèrement serrée de `0 à 20 mm`.
+Avec une SJ60 et un entraxe de `625 mm`, le vide vaut `565 mm` : un panneau de
+`575 mm` est donc serré de `10 mm` et marqué compatible. Si aucun entraxe
+compatible n'est possible dans la limite structurelle, le résultat indique la
+recoupe, la compression excessive ou le jeu restant au lieu de masquer l'écart.
+
+Les faces supérieures des principales et des solives sont supposées alignées
+pour recevoir le plancher. Une solive plus haute peut donc descendre sous la
+principale ; ce n'est pas rejeté structurellement, mais la différence de hauteur
+est affichée. Dans ce cas, la géométrie du sabot EWH, le clouage réellement
+possible dans la poutre porteuse et les renforts d'âme doivent être vérifiés.
 
 Deux sabots sont comptés par segment au prix indicatif de `7,30 €` pièce. Leur
 résistance, la référence exacte, les pointes, les renforts d'âme, les anti-dévers
