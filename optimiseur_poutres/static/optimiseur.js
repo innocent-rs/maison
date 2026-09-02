@@ -50,3 +50,11 @@ function actualiserProfilFleche() {
 
 profilFleche?.addEventListener("change", actualiserProfilFleche);
 actualiserProfilFleche();
+
+const profilUsage = document.querySelector("#profil-usage");
+profilUsage?.addEventListener("change", () => {
+  const option = profilUsage.selectedOptions[0];
+  if (!option?.dataset.g) return;
+  document.querySelector('[name="masse_permanente_kg_m2"]').value = option.dataset.g;
+  document.querySelector('[name="masse_exploitation_kg_m2"]').value = option.dataset.q;
+});

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from io import BytesIO
 from typing import Any
 
-from flask import Flask, render_template, request
+from flask import Flask, Response, render_template, request, send_file
 
 from .calcul import (
     CatalogueSection,
@@ -15,6 +16,7 @@ from .calcul import (
     SECTIONS_FOURNISSEUR,
     optimiser,
 )
+from .exports import csv_pieux, pdf_rapport
 
 
 CHAMPS_NOMBRES = (
@@ -29,6 +31,8 @@ CHAMPS_NOMBRES = (
     "g_moyen_mpa",
     "fm_k_mpa",
     "fv_k_mpa",
+    "fc90_k_mpa",
+    "kc90",
     "kmod",
     "kdef",
     "psi2",
@@ -56,6 +60,7 @@ def _lire_hypotheses(formulaire: Any) -> HypothesesProjet:
     else:
         raise ValueError("le profil de flèche est invalide")
     valeurs["profil_fleche"] = profil_fleche
+    valeurs["profil_usage"] = formulaire.get("profil_usage", "maison")
     valeurs["orientation"] = formulaire.get("orientation", "auto")
     valeurs["inclure_poids_propre"] = formulaire.get("inclure_poids_propre") == "on"
     return HypothesesProjet(**valeurs)
@@ -148,6 +153,39 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 erreur=erreur,
             ),
             statut,
+        )
+
+    @app.post("/export/pieux.csv")
+    def exporter_pieux():
+        try:
+            resultat = optimiser(
+                _lire_hypotheses(request.form),
+                _lire_sections(request.form),
+            )
+            contenu = csv_pieux(resultat)
+        except ValueError as exception:
+            return Response(str(exception), status=400, mimetype="text/plain")
+        return Response(
+            contenu,
+            headers={"Content-Disposition": "attachment; filename=implantation-pieux.csv"},
+            content_type="text/csv; charset=utf-8",
+        )
+
+    @app.post("/export/rapport.pdf")
+    def exporter_rapport():
+        try:
+            resultat = optimiser(
+                _lire_hypotheses(request.form),
+                _lire_sections(request.form),
+            )
+            contenu = pdf_rapport(resultat)
+        except ValueError as exception:
+            return Response(str(exception), status=400, mimetype="text/plain")
+        return send_file(
+            BytesIO(contenu),
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name="rapport-poutres-pieux.pdf",
         )
 
     return app

@@ -10,18 +10,35 @@ sont N, mm et MPa.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import ceil, floor, isfinite
+from math import ceil, floor, isfinite, pi, sqrt
 from typing import Literal
 
 
 Orientation = Literal["longueur", "largeur"]
 ProfilFleche = Literal["atelier", "maison", "maison_fragile", "toiture", "personnalise"]
+ProfilUsage = Literal["maison", "atelier", "stockage", "toiture", "personnalise"]
 
 PROFILS_FLECHE: dict[str, float] = {
     "atelier": 250.0,
     "maison": 300.0,
     "maison_fragile": 400.0,
     "toiture": 200.0,
+}
+
+PROFILS_USAGE: dict[str, tuple[float, float]] = {
+    # Masses surfaciques de pré-dimensionnement G/Q en kg/m², toujours éditables.
+    "maison": (75.0, 150.0),
+    "atelier": (100.0, 250.0),
+    "stockage": (125.0, 500.0),
+    "toiture": (60.0, 100.0),
+}
+
+LIMITES_VIBRATOIRES: dict[str, tuple[float, float] | None] = {
+    "atelier": (4.5, 2.0),
+    "maison": (8.0, 1.0),
+    "maison_fragile": (8.0, 0.5),
+    "toiture": None,
+    "personnalise": (8.0, 1.0),
 }
 
 # Hypothèse V1 volontairement figée. La platine est descriptive : sa vérification
@@ -82,6 +99,7 @@ class HypothesesProjet:
     masse_exploitation_kg_m2: float = 150.0
     masse_ajoutee_totale_kg: float = 0.0
     masse_volumique_kg_m3: float = 500.0
+    profil_usage: ProfilUsage = "maison"
     # 0 laisse l'optimisation structurelle libre. Une valeur positive représente
     # la portée maximale provisoirement admise pour le futur système secondaire.
     entraxe_max_m: float = 4.0
@@ -91,6 +109,8 @@ class HypothesesProjet:
     g_moyen_mpa: float = 690.0
     fm_k_mpa: float = 24.0
     fv_k_mpa: float = 4.0
+    fc90_k_mpa: float = 2.5
+    kc90: float = 1.0
     kmod: float = 0.8
     kdef: float = 0.8
     psi2: float = 0.3
@@ -109,6 +129,8 @@ class HypothesesProjet:
             self.g_moyen_mpa,
             self.fm_k_mpa,
             self.fv_k_mpa,
+            self.fc90_k_mpa,
+            self.kc90,
             self.kmod,
             self.gamma_m,
             self.coefficient_cisaillement,
@@ -127,6 +149,8 @@ class HypothesesProjet:
             raise ValueError("les dimensions et propriétés doivent être positives")
         if self.orientation not in ("auto", "longueur", "largeur"):
             raise ValueError("le sens de portée est invalide")
+        if self.profil_usage not in (*PROFILS_USAGE, "personnalise"):
+            raise ValueError("le profil d'usage est invalide")
         if self.profil_fleche not in (*PROFILS_FLECHE, "personnalise"):
             raise ValueError("le profil de flèche est invalide")
         if self.profil_fleche in PROFILS_FLECHE:
@@ -150,6 +174,27 @@ class HypothesesProjet:
     def charge_q_surfacique_kN_m2(self) -> float:
         masse_totale_par_m2 = self.masse_ajoutee_totale_kg / self.surface_m2
         return (self.masse_exploitation_kg_m2 + masse_totale_par_m2) * 9.81 / 1_000
+
+
+@dataclass(frozen=True, slots=True)
+class ResultatPieu:
+    identifiant: str
+    colonne: int
+    rangee: int
+    x_m: float
+    y_m: float
+    type_appui: Literal["angle", "rive", "intermediaire"]
+    reaction_els_kN: float
+    reaction_elu_kN: float
+    taux_capacite: float
+
+    @property
+    def niveau(self) -> str:
+        if self.taux_capacite > 1:
+            return "depasse"
+        if self.taux_capacite >= 0.7:
+            return "vigilance"
+        return "marge"
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,6 +234,16 @@ class ResultatConfiguration:
     reaction_pieu_max_elu_kN: float
     capacite_appui_kN: float
     taux_appui: float
+    contrainte_compression_appui_mpa: float
+    resistance_compression_appui_mpa: float
+    taux_compression_appui: float
+    frequence_propre_hz: float
+    frequence_min_hz: float | None
+    fleche_sous_1kn_mm: float
+    fleche_sous_1kn_limite_mm: float | None
+    taux_vibration: float | None
+    vibration_respectee: bool | None
+    pieux: tuple[ResultatPieu, ...]
     conforme: bool
     contraintes: tuple[str, ...]
 
@@ -199,6 +254,7 @@ class ResultatConfiguration:
             self.taux_flexion,
             self.taux_cisaillement,
             self.taux_appui,
+            self.taux_compression_appui,
         )
 
     @property
@@ -210,7 +266,9 @@ class ResultatConfiguration:
             return "Flexion ELU"
         if taux == self.taux_cisaillement:
             return "Cisaillement ELU"
-        return "Pieu vissé ELU"
+        if taux == self.taux_appui:
+            return "Pieu vissé ELU"
+        return "Compression sur platine"
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,6 +276,9 @@ class ResultatOptimisation:
     hypotheses: HypothesesProjet
     configurations: tuple[ResultatConfiguration, ...]
     meilleure: ResultatConfiguration | None
+    moins_de_pieux: ResultatConfiguration | None
+    meilleure_marge: ResultatConfiguration | None
+    alternatives: tuple[ResultatConfiguration, ...]
 
 
 def _fleche_uniforme_mm(
@@ -238,6 +299,31 @@ def _fleche_uniforme_mm(
         * portee_mm**2
         / (
             8
+            * hypotheses.coefficient_cisaillement
+            * hypotheses.g_moyen_mpa
+            * section.aire_mm2
+        )
+    )
+    return flexion + cisaillement
+
+
+def _fleche_ponctuelle_centrale_mm(
+    charge_kN: float,
+    portee_mm: float,
+    section: CatalogueSection,
+    hypotheses: HypothesesProjet,
+) -> float:
+    charge_n = charge_kN * 1_000
+    flexion = (
+        charge_n
+        * portee_mm**3
+        / (48 * hypotheses.e_moyen_mpa * section.inertie_mm4)
+    )
+    cisaillement = (
+        charge_n
+        * portee_mm
+        / (
+            4
             * hypotheses.coefficient_cisaillement
             * hypotheses.g_moyen_mpa
             * section.aire_mm2
@@ -314,6 +400,85 @@ def evaluer_configuration(
     capacite_appui_kN = CAPACITE_PIEU_VISSE_TONNES * 9.81
     taux_appui = reaction_pieu_max / capacite_appui_kN
 
+    longueur_contact_mm = (
+        DIAMETRE_PLATINE_PIEU_MM
+        if nombre_lignes_appui_intermediaires
+        else DIAMETRE_PLATINE_PIEU_MM / 2
+    )
+    aire_contact_mm2 = min(section.largeur_mm, DIAMETRE_PLATINE_PIEU_MM) * longueur_contact_mm
+    contrainte_compression_appui = reaction_pieu_max * 1_000 / aire_contact_mm2
+    resistance_compression_appui = (
+        hypotheses.kc90
+        * hypotheses.kmod
+        * hypotheses.fc90_k_mpa
+        / hypotheses.gamma_m
+    )
+    taux_compression_appui = (
+        contrainte_compression_appui / resistance_compression_appui
+    )
+
+    masse_q_kg_m2 = (
+        hypotheses.masse_exploitation_kg_m2
+        + hypotheses.masse_ajoutee_totale_kg / hypotheses.surface_m2
+    )
+    masse_lineique_kg_m = (
+        (
+            hypotheses.masse_permanente_kg_m2
+            + hypotheses.psi2 * masse_q_kg_m2
+        )
+        * largeur_tributaire_m
+        + section.aire_mm2 / 1_000_000 * hypotheses.masse_volumique_kg_m3
+    )
+    ei_n_m2 = hypotheses.e_moyen_mpa * section.inertie_mm4 * 1e-6
+    frequence_propre = (
+        pi / (2 * portee_m**2) * sqrt(ei_n_m2 / masse_lineique_kg_m)
+    )
+    fleche_sous_1kn = _fleche_ponctuelle_centrale_mm(
+        1.0, portee_mm, section, hypotheses
+    )
+    limites_vibration = LIMITES_VIBRATOIRES[hypotheses.profil_fleche]
+    if limites_vibration is None:
+        frequence_min = None
+        fleche_1kn_limite = None
+        taux_vibration = None
+        vibration_respectee = None
+    else:
+        frequence_min, fleche_1kn_limite = limites_vibration
+        taux_vibration = max(
+            frequence_min / frequence_propre,
+            fleche_sous_1kn / fleche_1kn_limite,
+        )
+        vibration_respectee = taux_vibration <= 1
+
+    pieux: list[ResultatPieu] = []
+    index_pieu = 1
+    for rangee in range(nombre_travees + 1):
+        facteur_reaction = 0.5 if rangee in (0, nombre_travees) else 1.0
+        for colonne in range(nombre_poutres):
+            largeur_pieu = entraxe_m / 2 if colonne in (0, nombre_poutres - 1) else entraxe_m
+            qg_pieu = hypotheses.charge_g_surfacique_kN_m2 * largeur_pieu + poids_propre_kN_m
+            qq_pieu = hypotheses.charge_q_surfacique_kN_m2 * largeur_pieu
+            reaction_els = facteur_reaction * (qg_pieu + qq_pieu) * portee_m
+            reaction_elu = facteur_reaction * (1.35 * qg_pieu + 1.5 * qq_pieu) * portee_m
+            angle = rangee in (0, nombre_travees) and colonne in (0, nombre_poutres - 1)
+            type_appui: Literal["angle", "rive", "intermediaire"] = (
+                "angle" if angle else "rive" if rangee in (0, nombre_travees) else "intermediaire"
+            )
+            pieux.append(
+                ResultatPieu(
+                    identifiant=f"P{index_pieu:02d}",
+                    colonne=colonne,
+                    rangee=rangee,
+                    x_m=colonne * entraxe_m,
+                    y_m=rangee * portee_m,
+                    type_appui=type_appui,
+                    reaction_els_kN=reaction_els,
+                    reaction_elu_kN=reaction_elu,
+                    taux_capacite=reaction_elu / capacite_appui_kN,
+                )
+            )
+            index_pieu += 1
+
     contraintes: list[str] = []
     if portee_m > section.longueur_max_m:
         contraintes.append("portée supérieure à la longueur commerciale")
@@ -329,6 +494,8 @@ def evaluer_configuration(
         contraintes.append("résistance au cisaillement")
     if taux_appui > 1:
         contraintes.append("capacité statique du pieu vissé")
+    if taux_compression_appui > 1:
+        contraintes.append("compression du bois sur la platine")
 
     longueur_totale = nombre_poutres * portee_totale_m
     masse_poutres = (
@@ -382,6 +549,16 @@ def evaluer_configuration(
         reaction_pieu_max_elu_kN=reaction_pieu_max,
         capacite_appui_kN=capacite_appui_kN,
         taux_appui=taux_appui,
+        contrainte_compression_appui_mpa=contrainte_compression_appui,
+        resistance_compression_appui_mpa=resistance_compression_appui,
+        taux_compression_appui=taux_compression_appui,
+        frequence_propre_hz=frequence_propre,
+        frequence_min_hz=frequence_min,
+        fleche_sous_1kn_mm=fleche_sous_1kn,
+        fleche_sous_1kn_limite_mm=fleche_1kn_limite,
+        taux_vibration=taux_vibration,
+        vibration_respectee=vibration_respectee,
+        pieux=tuple(pieux),
         conforme=not contraintes,
         contraintes=tuple(contraintes),
     )
@@ -423,6 +600,7 @@ def optimiser(
         orientations = (hypotheses.orientation,)
 
     configurations: list[ResultatConfiguration] = []
+    toutes_conformes: list[ResultatConfiguration] = []
     for orientation in orientations:
         for section in sections:
             candidates: list[ResultatConfiguration] = []
@@ -470,6 +648,7 @@ def optimiser(
                     break
 
             conformes = [candidate for candidate in candidates if candidate.conforme]
+            toutes_conformes.extend(conformes)
             if conformes:
                 configurations.append(
                     min(
@@ -502,4 +681,31 @@ def optimiser(
         )
     )
     meilleure = next((c for c in configurations if c.conforme), None)
-    return ResultatOptimisation(hypotheses, tuple(configurations), meilleure)
+    alternatives = sorted(
+        toutes_conformes,
+        key=lambda c: (c.cout_eur, c.nombre_pieux_total, c.taux_dimensionnant),
+    )
+    moins_de_pieux = (
+        min(
+            toutes_conformes,
+            key=lambda c: (c.nombre_pieux_total, c.cout_eur, c.taux_dimensionnant),
+        )
+        if toutes_conformes
+        else None
+    )
+    meilleure_marge = (
+        min(
+            toutes_conformes,
+            key=lambda c: (c.taux_dimensionnant, c.cout_eur, c.nombre_pieux_total),
+        )
+        if toutes_conformes
+        else None
+    )
+    return ResultatOptimisation(
+        hypotheses,
+        tuple(configurations),
+        meilleure,
+        moins_de_pieux,
+        meilleure_marge,
+        tuple(alternatives[:24]),
+    )

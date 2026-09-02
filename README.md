@@ -69,8 +69,9 @@ Les sorties du serveur sont conservées dans `.ocp-vscode.log`.
 
 L'outil autonome compare les sections C24, les deux sens de portée, le nombre de
 poutres principales et les travées créées par des appuis intermédiaires. Il
-classe les solutions conformes par coût global et affiche les taux de flèche
-ELS, de flexion ELU et de cisaillement ELU :
+présente les optima coût, nombre de pieux et marge structurelle, puis affiche
+les taux de flèche ELS, flexion et cisaillement ELU, capacité des pieux et
+compression locale bois/platine :
 
 ```console
 just optimiseur-poutres
@@ -83,7 +84,10 @@ automatiquement et chaque poutre possède un pieu à chacune de ses extrémités
 ce qui garantit les quatre coins. Les solives en I et
 leurs sabots sont explicitement hors périmètre de cette V1. Le catalogue, les
 masses, la portée secondaire maximale provisoire et les coefficients de calcul
-sont modifiables dans l'interface. Les hypothèses et limites du modèle sont
+sont modifiables dans l'interface. Un plan à l'échelle donne les coordonnées et
+réactions de chaque pieu ; l'implantation est exportable en CSV et le dossier de
+pré-dimensionnement en PDF. Une jauge vibratoire reste indicative jusqu'à la V2
+incluant le plancher secondaire. Les hypothèses et limites du modèle sont
 détaillées dans [optimiseur_poutres/README.md](optimiseur_poutres/README.md).
 
 ### Simulation du plancher fini

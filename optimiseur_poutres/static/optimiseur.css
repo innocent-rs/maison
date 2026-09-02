@@ -75,13 +75,14 @@ button { border: 0; cursor: pointer; font: inherit; font-weight: 800; }
 .prix { display: grid; justify-items: end; text-align: right; }
 .prix strong { color: #f0a06e; font: 400 3.2rem Georgia, serif; }
 .prix span { max-width: 230px; color: #9eaaa4; font-size: .68rem; }
-.jauges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6rem; margin-top: 1.8rem; }
+.jauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.6rem; margin-top: 1.8rem; }
 .jauge-titre { display: flex; justify-content: space-between; font-size: .76rem; }
 .jauge { height: 8px; margin: .5rem 0; overflow: hidden; background: #3e4d47; border-radius: 10px; }
 .jauge i { display: block; height: 100%; background: #58b78e; border-radius: inherit; }
 .jauge.attention i { background: #efa061; }
 .jauge.ko i { background: #e06358; }
 .jauge-bloc small { color: #8f9c96; }
+.jauge-bloc.indicatif { padding-left: .8rem; border-left: 2px dashed #66766f; }
 .schema { margin: 2rem 0 0; padding: 1.5rem; background: #1f2c27; }
 .schema-entete, .schema-cotes, .legende-plan { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .schema-entete { margin-bottom: 1rem; }
@@ -98,9 +99,17 @@ button { border: 0; cursor: pointer; font: inherit; font-weight: 800; }
 .rang-pieux { stroke: #72ad92; stroke-width: 2; stroke-dasharray: 10 10; opacity: .55; vector-effect: non-scaling-stroke; }
 .rang-pieux.rang-rive { opacity: .3; }
 .platine-pieu { fill: #79d5ac; stroke: #e0f8eb; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.pieu-plan.charge-vigilance .platine-pieu { fill: #efa061; }
+.pieu-plan.charge-depasse .platine-pieu { fill: #e06358; }
 .axe-pieu { fill: #183e31; stroke: #e0f8eb; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .pieu-plan:hover .platine-pieu { fill: #f0a06e; }
 .schema-cotes { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid #41504a; }
+.detail-pieux { margin-top: 1.2rem; border-top-color: #41504a; }
+.detail-pieux summary { color: #9ad5ba; }
+.detail-pieux table { margin-top: 1rem; color: #e5ebe7; }
+.detail-pieux th, .detail-pieux td { border-color: #41504a; }
+.pastille.charge-vigilance { background: #f7dfca; color: #9a4e20; }
+.pastille.charge-depasse { background: #f3d0cb; color: var(--rouge); }
 .metriques { display: grid; grid-template-columns: repeat(7, 1fr); margin: 1.5rem 0 0; border-top: 1px solid #41504a; border-left: 1px solid #41504a; }
 .metriques div { padding: 1rem; border-right: 1px solid #41504a; border-bottom: 1px solid #41504a; }
 .metriques dt { color: #8f9c96; font-size: .65rem; }
@@ -111,6 +120,18 @@ button { border: 0; cursor: pointer; font: inherit; font-weight: 800; }
 .comparaison .non-conforme:first-child { background: transparent; }
 .pastille { display: inline-block; padding: .25rem .45rem; border-radius: 20px; background: var(--vert-clair); color: var(--vert); font-weight: 850; }
 .pastille.ko { background: #f3dcd8; color: var(--rouge); }
+.objectifs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.objectifs .panneau { margin: 0; }
+.objectifs .actif { border-top: 4px solid var(--vert); }
+.objectifs article > span { color: var(--orange); font-size: .67rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.objectifs h3 { margin: .5rem 0 .2rem; font-size: 1.35rem; }
+.objectifs p { margin: 0 0 1rem; color: var(--gris); font-size: .75rem; }
+.objectifs strong { font: 1.7rem Georgia, serif; }
+.objectifs small { display: block; margin-top: .2rem; color: var(--gris); }
+.exports-actions { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; margin: -0.5rem 0 1.5rem; }
+.exports-actions > div { display: grid; gap: .2rem; margin-right: auto; }
+.exports-actions span { color: var(--gris); font-size: .7rem; }
+.exports-actions button { padding: .75rem 1rem; background: var(--vert); color: white; }
 .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; margin-top: 1.5rem; border: 1px solid var(--trait); background: var(--trait); }
 .notes article { padding: 1.5rem; background: var(--carte); }
 .notes h3 { margin: .5rem 0; }
@@ -128,7 +149,7 @@ footer { padding: 1.5rem; border-top: 1px solid var(--trait); color: var(--gris)
   .monogramme { display: none; }
 }
 @media (max-width: 650px) {
-  .grille-4, .grille-2, .jauges, .notes, .hero-grid { grid-template-columns: 1fr; }
+  .grille-4, .grille-2, .jauges, .notes, .hero-grid, .objectifs { grid-template-columns: 1fr; }
   .prix { justify-items: start; text-align: left; }
   .actions { display: grid; }
   .calculer { min-width: 0; }
@@ -136,4 +157,5 @@ footer { padding: 1.5rem; border-top: 1px solid var(--trait); color: var(--gris)
   .resultat-hero { padding: 1.25rem; }
   .schema-entete, .schema-cotes { align-items: flex-start; flex-direction: column; }
   .legende-plan { align-items: flex-start; flex-direction: column; }
+  .exports-actions { align-items: stretch; flex-direction: column; }
 }
