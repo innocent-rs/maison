@@ -68,6 +68,10 @@ atelier-mob:
 atelier-mob-fleche:
     python -m atelier_mob.webapp
 
+# Optimise les poutres principales seules sur http://127.0.0.1:5051
+optimiseur-poutres:
+    python -m optimiseur_poutres.webapp
+
 # Pré-vérifie le plancher de l'atelier aux ELU/ELS selon l'Eurocode 5
 atelier-mob-verification:
     python -m atelier_mob.verification

@@ -12,6 +12,7 @@ catalogues/       données commerciales partagées, hors du moteur
 maison/            projet de maison en A
 local_batteries/   projet de local technique 3 × 3 m
 atelier_mob/       projet d'atelier en ossature bois
+optimiseur_poutres/ outil web de pré-dimensionnement et coût des poutraisons
 ```
 
 Le package `home_framework` ne dépend d'aucun projet. Les anciens modules
@@ -63,6 +64,26 @@ activé. Le fichier `uv.lock` fixe les versions Python, tandis que `flake.lock`
 fixe les dépendances Nix.
 
 Les sorties du serveur sont conservées dans `.ocp-vscode.log`.
+
+### Optimiseur web de poutres principales
+
+L'outil autonome compare les sections C24, les deux sens de portée, le nombre de
+poutres principales et les travées créées par des appuis intermédiaires. Il
+classe les solutions conformes par coût global et affiche les taux de flèche
+ELS, de flexion ELU et de cisaillement ELU :
+
+```console
+just optimiseur-poutres
+```
+
+Ouvrir ensuite <http://127.0.0.1:5051>. Les appuis intermédiaires sont modélisés
+comme des pieux vissés à `500 €` pièce et `5 t` de capacité statique. Ces valeurs
+et la platine de `200 mm` sont figées dans la V1 ; leur nombre est optimisé
+automatiquement. Les solives en I et
+leurs sabots sont explicitement hors périmètre de cette V1. Le catalogue, les
+masses, la portée secondaire maximale provisoire et les coefficients de calcul
+sont modifiables dans l'interface. Les hypothèses et limites du modèle sont
+détaillées dans [optimiseur_poutres/README.md](optimiseur_poutres/README.md).
 
 ### Simulation du plancher fini
 
