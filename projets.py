@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from atelier_mob import creer_atelier_mob
+from etabli_mobile import creer_etabli_mobile
 from local_batteries import creer_local_batteries
 from local_batteries.debit import exporter_debit, lignes_resume_debit
 from main import make_part
@@ -48,6 +49,15 @@ class DefinitionProjet:
 
 
 PROJETS: dict[str, DefinitionProjet] = {
+    "etabli_mobile": DefinitionProjet(
+        identifiant="etabli_mobile",
+        construire=creer_etabli_mobile,
+        lots={
+            "chassis": lambda projet: projet.nomenclature_chassis(),
+            "total": lambda projet: projet.nomenclature_achats(),
+        },
+        dossier_sortie=Path("build/etabli_mobile"),
+    ),
     "atelier_mob": DefinitionProjet(
         identifiant="atelier_mob",
         construire=creer_atelier_mob,

@@ -64,6 +64,10 @@ local-batteries:
 atelier-mob:
     python -m atelier_mob.main
 
+# Affiche le châssis courant de l'établi mobile en profilés 45 × 90
+etabli-mobile:
+    python -m etabli_mobile.main
+
 # Lance le calculateur web de flèche GT24 sur http://127.0.0.1:5050
 atelier-mob-fleche:
     python -m atelier_mob.webapp

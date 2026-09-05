@@ -12,6 +12,7 @@ catalogues/       données commerciales partagées, hors du moteur
 maison/            projet de maison en A
 local_batteries/   projet de local technique 3 × 3 m
 atelier_mob/       projet d'atelier en ossature bois
+etabli_mobile/     projet d'établi mobile en profilés aluminium 45 × 90
 optimiseur_poutres/ outil web de pré-dimensionnement et coût des poutraisons
 ```
 
@@ -22,6 +23,9 @@ compatibilité.
 Le local technique batteries indépendant (`3 × 3 m`, `9 m²`), avec son
 plancher renforcé et ses murs en ossature bois, est décrit dans
 [local_batteries/README.md](local_batteries/README.md).
+
+La première définition de la base triangulée de l'établi mobile est consignée
+dans [etabli_mobile/README.md](etabli_mobile/README.md).
 
 ## Démarrage sous NixOS
 

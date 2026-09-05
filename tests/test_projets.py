@@ -4,6 +4,16 @@ from projets import PROJETS, resoudre_projet_et_lot
 
 
 class TestRegistreProjets(unittest.TestCase):
+    def test_etabli_mobile_expose_le_chassis(self) -> None:
+        definition = PROJETS["etabli_mobile"]
+        projet = definition.construire()
+
+        self.assertEqual(definition.lots_demandes("tous"), ("chassis", "total"))
+        self.assertEqual(
+            definition.nomenclature(projet, "chassis").nombre_pieces,
+            18,
+        )
+
     def test_atelier_mob_expose_ses_fondations(self) -> None:
         definition = PROJETS["atelier_mob"]
         projet = definition.construire()
